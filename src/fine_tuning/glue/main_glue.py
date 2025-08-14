@@ -74,7 +74,7 @@ def main(args):
         wandb.config.update(params_info_dict, allow_val_change=True)
     ############################# Training #####################################
     training_args = TrainingArguments(
-        output_dir=f"./src/fine_tuning/glue/{args.results_path}",
+        output_dir=f"./src/fine_tuning/glue/{args.results_path}/{args.run_name}",
         do_train=not args.do_not_train,
         do_eval=not args.do_not_eval,
         do_predict=args.do_predict,
@@ -85,6 +85,7 @@ def main(args):
         gradient_accumulation_steps=args.grad_acc_steps,
         lr_scheduler_type=args.lr_scheduler_type,
         warmup_steps=args.warmup_steps,
+        warmup_ratio=args.warmup_ratio,
         learning_rate=args.lr,
         num_train_epochs=args.n_epoches_train,
         max_steps=args.max_steps_train,

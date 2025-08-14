@@ -117,6 +117,7 @@ class Finetuner:
         logger.info("Setting up PEFT adapters...")
 
         peft_args = utils.get_peft_arguments(self.args)
+        peft_args.task_type = "CAUSAL_LM"
         if peft_args is not None:
             self.model = peft.get_peft_model(self.model, peft_args)
 
@@ -125,12 +126,15 @@ class Finetuner:
             self.model, verbose=True
         )
 
+        num_peft_adapters = utils.count_atapters(self.model, self.args.ft_strategy)
+
         if self.args.wandb:
             wandb.log(
                 {
                     "trainable_params_count": tr_param_count,
                     "total_param_count": all_param_count,
                     "trainable_params_percentage": tr_persent,
+                    "num_peft_adapters": num_peft_adapters,
                 }
             )
 
@@ -229,6 +233,7 @@ class Finetuner:
             gradient_accumulation_steps=self.args.grad_acc_steps,
             lr_scheduler_type=self.args.lr_scheduler_type,
             warmup_steps=self.args.warmup_steps,
+            warmup_ratio=self.args.warmup_ratio,
             learning_rate=self.args.lr,
             num_train_epochs=self.args.n_epoches_train,
             max_steps=self.args.max_steps_train,
@@ -240,13 +245,14 @@ class Finetuner:
             bf16=(self.args.dtype == "bfloat16"),
             fp16=(self.args.dtype == "float16"),
             logging_dir=f"./src/fine_tuning/llm/{self.args.results_path}/{self.args.run_name}",
+            output_dir=f"./src/fine_tuning/llm/{self.args.results_path}/{self.args.run_name}",
             run_name=self.args.run_name,
             report_to=["wandb"] if self.args.wandb else ["none"],
         )
 
         optimizer = self.get_optimizer()
 
-        trainer = Trainer(
+        self.trainer = Trainer(
             model=self.model,
             train_dataset=train_dataset,
             args=training_args,
@@ -261,9 +267,13 @@ class Finetuner:
         torch.cuda.empty_cache()
 
         # Train the model
-        train_result = trainer.train()
+        train_result = self.trainer.train()
         metrics = train_result.metrics
-        trainer.log_metrics("train", metrics)
+        if self.args.ft_strategy == "WeightLoRA":
+            remain_adapters = utils.count_remain_adapters(self.args, self.model)
+        metrics = metrics | remain_adapters
+        self.trainer.log_metrics("train", metrics)
+        self.trainer.save_metrics("train", metrics)
         logger.info(f"Training completed. Metrics: {metrics}")
 
     def evaluate(self):
@@ -331,7 +341,7 @@ class Finetuner:
         if total > 0:
             final_accuracy = (correct / total) * 100
             logger.info(f"[FINAL] Accuracy: {final_accuracy:.2f}%")
-
+            self.trainer.save_metrics("eval", {"accuracy": final_accuracy})
             if self.args.wandb:
                 wandb.log({"final_accuracy": final_accuracy})
         else:

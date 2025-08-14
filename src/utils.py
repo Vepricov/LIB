@@ -68,6 +68,8 @@ def count_atapters(model, peft_type):
 
 def get_run_name(args, parser, tuning=False):
     key_args = ["optimizer", "model", "dataset"]
+    if hasattr(args, "ft_strategy"):
+        key_args.append("ft_strategy")
     ignore_args = [
         "verbose",
         "seed",
@@ -92,8 +94,6 @@ def get_run_name(args, parser, tuning=False):
         "weight_init",
         "ns_steps",
     ]
-    if args.optimizer in ["taia", "adam-sania"]:
-        ignore_args_tuning.append("scale")
     # Get the default values
     defaults = vars(parser.parse_args([]))
 
@@ -185,7 +185,7 @@ def get_peft_arguments(args):
             r=args.lora_r,
             lora_alpha=args.lora_alpha,
             lora_dropout=args.lora_dropout,
-            use_weight_lora=True
+            use_weight_lora=True,
         )
     elif args.ft_strategy == "Full":
         return None
@@ -252,6 +252,7 @@ def get_peft_arguments(args):
         raise ValueError(f"Pass target_modules to your model {args.model}")
     return peft_args
 
+
 def count_remain_adapters(args, model):
     i = 0
     remaining_adapters = {}
@@ -272,6 +273,7 @@ def count_remain_adapters(args, model):
                     load_name = name
                 remaining_adapters[f"active_adapter_{i}"] = load_name
     return remaining_adapters
+
 
 def shuffleDict(d):
     keys = list(d.keys())

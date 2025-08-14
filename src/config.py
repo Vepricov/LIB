@@ -41,7 +41,7 @@ def parse_args():
             "sgd",
             "adam-sania",
             "muon",
-            "weight_adamw"
+            "weight_adamw",
         ],
     )
     args1, _ = parser1.parse_known_args()
@@ -76,7 +76,7 @@ def parse_args():
     parser.add_argument(
         "--run_prefix", default=None, help="Run prefix for the experiment run name"
     )
-    parser.add_argument("--wandb_project", default="OPTIM_TEST")
+    parser.add_argument("--wandb_project", default="Weight_LoRA")
     parser.add_argument(
         "--verbose",
         action="store_true",
@@ -137,10 +137,17 @@ def parse_args():
             "--k", "--K", default=10, type=int, help="Number of active LoRA adapters"
         )
         parser.add_argument(
-            "--lr_w", "--learning_rate_w", default=5.0, type=float, help="learning rate for weight params"
+            "--lr_w",
+            "--learning_rate_w",
+            default=5.0,
+            type=float,
+            help="learning rate for weight params",
         )
         parser.add_argument(
-            "--max_fat_steps", type=int, default=3, help="Projection steps of WeightLoRA"
+            "--max_fat_steps",
+            type=int,
+            default=3,
+            help="Projection steps of WeightLoRA",
         )
 
     ### Problem Specific Arguments
