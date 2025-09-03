@@ -68,11 +68,10 @@ def parse_args():
 
     ### Wandb Arguments
     parser.add_argument("--wandb", action="store_true", help="To use wandb")
-    parser.add_argument("--comet", action="store_true", help="To use comet")
     parser.add_argument(
         "--run_prefix", default=None, help="Run prefix for the experiment run name"
     )
-    parser.add_argument("--wandb_project", default="MIKOLA_DROP_SOAP")
+    parser.add_argument("--wandb_project", default="QUASI_DESCENT")
     parser.add_argument(
         "--verbose",
         action="store_true",
@@ -102,12 +101,12 @@ def parse_args():
         )
         parser.add_argument("--eps", default=1e-8, type=float, help="Epsilon for Adam")
 
-    if args1.optimizer in ["shampoo", "sgd", "muon"]:
+    if args1.optimizer in ["shampoo", "sgd", "muon", "taia"]:
         parser.add_argument(
             "--momentum", default=0.9, type=float, help="First momentum"
         )
 
-    if args1.optimizer in ["soap", "mikola_drop_soap"]:
+    if args1.optimizer in ["soap"]:
         parser.add_argument(
             "--shampoo_beta",
             default=-1,
@@ -120,27 +119,32 @@ def parse_args():
             type=int,
             help="maximum dimension of preconditioner for SOAP-like algorithms",
         )
-    if args1.optimizer in ["shampoo", "soap", "diag-hvp", "mikola_drop_soap"]:
+    if args1.optimizer in ["shampoo", "soap", "diag-hvp", "taia"]:
         parser.add_argument(
             "--update_freq",
             default=1,
             type=int,
             help="Freqiensy to update Q for Shampoo and SOAP",
         )
-    if args1.optimizer in ["muon"]:
+    if args1.optimizer in ["muon", "taia"]:
         parser.add_argument(
             "--ns_steps", default=10, type=int, help="Number of the NS steps algo"
         )
         parser.add_argument(
-            "--adamw_lr", default=None, type=float, help="lr for adam in "
+            "--adamw_lr", default=1e-4, type=float, help="lr for adam in "
         )
-    if args1.optimizer in ["mikola_drop_soap"]:
+    if args1.optimizer == "taia":
         parser.add_argument(
-            "--init",
-            default="kron",
+            "--lmo",
+            default="frobenious",
             type=str,
-            choices=["eps", "kron", "sum"],
-            help="Initialization method for Mikola Drop Soap",
+            help="Linear minimization oracle for taia",
+        )
+        parser.add_argument(
+            "--precondition_type",
+            default="norm",
+            type=str,
+            help="Type of preconditioner for taia",
         )
 
     ### Problem Specific Arguments

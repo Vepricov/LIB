@@ -2,7 +2,6 @@ import gc
 import json
 import torch
 import wandb
-from comet_ml.integration.spacy import comet_logger_v1
 from transformers import Trainer, TrainingArguments
 from utils_glue import glue_preprocess
 import peft
@@ -78,29 +77,6 @@ def main(args):
             params_info_dict["peft_params"] / params_info_dict["all_params"] * 100
         )
         wandb.config.update(params_info_dict, allow_val_change=True)
-    if args.comet:
-        experiment = comet_logger_v1(
-            project_name=args.wandb_project,
-            run_name=args.run_name,
-            tags=[args.model, args.dataset, args.optimizer],
-            config=args,
-        )
-        params_info_dict = {
-            "num_peft_adapters": num_peft_adapters,
-            "all_params_before_peft": all_params_before_peft,
-        }
-        (
-            params_info_dict["all_params"],
-            params_info_dict["trainable_params"],
-            params_info_dict["train_proportion"],
-        ) = utils.print_trainable_params(model, verbose=not args.wandb)
-        params_info_dict["peft_params"] = (
-            params_info_dict["all_params"] - all_params_before_peft
-        )
-        params_info_dict["peft_proportion"] = (
-            params_info_dict["peft_params"] / params_info_dict["all_params"] * 100
-        )
-        experiment.config.update(params_info_dict, allow_val_change=True)
     ############################# Training #####################################
     report_to = ["wandb"] if args.wandb else []
     if args.comet:
