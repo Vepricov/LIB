@@ -443,7 +443,7 @@ class DatasetRegistry:
     def set_dataset_paths(cls, args):
         """Set dataset paths on args"""
         if args.dataset in cls.DATASET_PATHS:
-            args.dataset_path = {cls.DATASET_PATHS[args.dataset]}
+            args.dataset_path = cls.DATASET_PATHS[args.dataset]
 
         if args.dataset in cls.VAL_DATASET_PATHS:
             args.val_dataset_path = cls.VAL_DATASET_PATHS[args.dataset]

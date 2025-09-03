@@ -142,52 +142,54 @@ def get_run_name(args, parser, tuning=False):
 
 
 def get_peft_arguments(args):
-    if args.ft_strategy == "LoRA":
+    if args.ft_strategy.lower() == "lora":
         peft_args = peft.LoraConfig(
             r=args.lora_r,
             lora_alpha=args.lora_alpha,
             lora_dropout=args.lora_dropout,
         )
-    elif args.ft_strategy == "LoKR":
+    elif args.ft_strategy.lower() == "lokr":
         peft_args = peft.LoKrConfig(
             r=args.lora_r,
             lora_alpha=args.lora_alpha,
             lora_dropout=args.lora_dropout,
         )
-    elif args.ft_strategy == "LoHA":
+    elif args.ft_strategy.lower() == "loha":
         peft_args = peft.LoHaConfig(
             r=args.lora_r,
             lora_alpha=args.lora_alpha,
             lora_dropout=args.lora_dropout,
         )
-    elif args.ft_strategy == "VERA":
+    elif args.ft_strategy.lower() == "vera":
         peft_args = peft.VeraConfig(r=args.lora_r, vera_dropout=args.lora_dropout)
-    elif args.ft_strategy == "ADALoRA":
+    elif args.ft_strategy.lower() == "adalora":
         peft_args = peft.AdaLoraConfig(
             target_r=args.lora_r,
         )
-    elif args.ft_strategy == "DoRA":
+    elif args.ft_strategy.lower() == "dora":
         peft_args = peft.LoraConfig(
             r=args.lora_r,
             lora_alpha=args.lora_alpha,
             lora_dropout=args.lora_dropout,
             use_dora=True,
         )
-    elif args.ft_strategy == "rsLoRA":
+    elif args.ft_strategy.lower() == "rslora":
         peft_args = peft.LoraConfig(
             r=args.lora_r,
             lora_alpha=args.lora_alpha,
             lora_dropout=args.lora_dropout,
             use_rslora=True,
         )
-    elif args.ft_strategy == "WeightLoRA":
+    elif args.ft_strategy.lower() == "weightlora":
         peft_args = peft.WeightLoraConfig(
             r=args.lora_r,
             lora_alpha=args.lora_alpha,
             lora_dropout=args.lora_dropout,
         )
-    elif args.ft_strategy == "Full":
-        return None
+    elif args.ft_strategy.lower() == "full":
+        peft_args = peft.LoraConfig(
+            target_modules=None,
+        )
     else:
         raise ValueError(f"Incorrect FT type {args.ft_strategy}!")
 
@@ -211,7 +213,7 @@ def get_peft_arguments(args):
             "fc1",
             "fc2",
         ]
-    elif "Llama" in args.model.lower():
+    elif "llama" in args.model.lower():
         peft_args.target_modules = [
             "q_proj",
             "k_proj",

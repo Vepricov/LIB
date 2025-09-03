@@ -79,7 +79,7 @@ def glue_preprocess(args):
             bnb_4bit_compute_dtype=torch_dtype,
             bnb_4bit_use_double_quant=True,
         )
-    else: # for deberta
+    else:  # for deberta
         attn_implementation = "eager"
         torch_dtype = torch.float32
         bnb_config = None
@@ -192,7 +192,7 @@ def glue_preprocess(args):
 
     if args.pad_to_max_length:
         data_collator = default_data_collator
-    elif args.fp16:
+    elif args.dtype == "bfloat16":
         data_collator = DataCollatorWithPadding(tokenizer, pad_to_multiple_of=8)
     else:
         data_collator = None

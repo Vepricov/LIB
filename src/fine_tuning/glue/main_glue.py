@@ -2,6 +2,7 @@ import gc
 import json
 import torch
 import wandb
+from comet_ml.integration.spacy import comet_logger_v1
 from transformers import Trainer, TrainingArguments
 from utils_glue import glue_preprocess
 import peft
@@ -33,12 +34,18 @@ def main(args):
     ############################### PEFT Adapters ##############################
     all_params_before_peft, _, _ = utils.print_trainable_params(model, verbose=False)
     peft_args = utils.get_peft_arguments(args)
-    if peft_args is not None:
+    if args.ft_strategy.lower() != "full":
         model = peft.get_peft_model(model, peft_args)
+    else:
+        for name, param in model.named_parameters():
+            is_trainable = any(
+                ft_param_name in name for ft_param_name in peft_args.target_modules
+            )
+            param.requires_grad = is_trainable
     num_peft_adapters = utils.count_atapters(model, args.ft_strategy)
     args.label_names = ["labels"]  # peft and compute_metrics() problem
     ######################### Optimizer and Scheduler ##########################
-    optimizer, scheduler = None, None
+    optimizer = None
     if args.use_old_tune_params:
         f_name = "./glue_experiment/tuned_params.json"
         with open(f_name) as f:
@@ -71,7 +78,35 @@ def main(args):
             params_info_dict["peft_params"] / params_info_dict["all_params"] * 100
         )
         wandb.config.update(params_info_dict, allow_val_change=True)
+    if args.comet:
+        experiment = comet_logger_v1(
+            project_name=args.wandb_project,
+            run_name=args.run_name,
+            tags=[args.model, args.dataset, args.optimizer],
+            config=args,
+        )
+        params_info_dict = {
+            "num_peft_adapters": num_peft_adapters,
+            "all_params_before_peft": all_params_before_peft,
+        }
+        (
+            params_info_dict["all_params"],
+            params_info_dict["trainable_params"],
+            params_info_dict["train_proportion"],
+        ) = utils.print_trainable_params(model, verbose=not args.wandb)
+        params_info_dict["peft_params"] = (
+            params_info_dict["all_params"] - all_params_before_peft
+        )
+        params_info_dict["peft_proportion"] = (
+            params_info_dict["peft_params"] / params_info_dict["all_params"] * 100
+        )
+        experiment.config.update(params_info_dict, allow_val_change=True)
     ############################# Training #####################################
+    report_to = ["wandb"] if args.wandb else []
+    if args.comet:
+        report_to += ["comet"]
+    if report_to == []:
+        report_to = ["none"]
     training_args = TrainingArguments(
         output_dir=f"./src/fine_tuning/glue/{args.results_path}",
         do_train=not args.do_not_train,
@@ -84,6 +119,7 @@ def main(args):
         gradient_accumulation_steps=args.grad_acc_steps,
         lr_scheduler_type=args.lr_scheduler_type,
         warmup_steps=args.warmup_steps,
+        warmup_ratio=args.warmup_ratio,
         learning_rate=args.lr,
         num_train_epochs=args.n_epoches_train,
         max_steps=args.max_steps_train,
@@ -94,7 +130,10 @@ def main(args):
         save_steps=args.save_steps,
         logging_dir=f"./src/fine_tuning/glue/{args.results_path}/{args.run_name}",
         run_name=args.run_name,
-        report_to=["wandb"] if args.wandb else ["none"],
+        bf16=(args.dtype == "bfloat16"),
+        fp16=(args.dtype == "float16"),
+        report_to=report_to,
+        # remove_unused_columns=False if peft_args is not None else True,
         label_names=["labels"],  # peft and compute_metrics() problem
     )
     trainer = Trainer(
@@ -105,7 +144,7 @@ def main(args):
         compute_metrics=compute_metrics,
         tokenizer=tokenizer,
         data_collator=data_collator,
-        optimizers=[optimizer, scheduler],
+        optimizers=[optimizer, None],
     )
 
     if not args.do_not_train:

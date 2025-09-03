@@ -34,14 +34,6 @@ def parse_args():
         type=str,
         default=None,
         help="Name of the optimizer to use",
-        choices=[
-            "adamw",
-            "soap",
-            "shampoo",
-            "sgd",
-            "adam-sania",
-            "muon",
-        ],
     )
     args1, _ = parser1.parse_known_args()
     parser = parser1
@@ -55,7 +47,11 @@ def parse_args():
         help="Batch size for training",
     )
     parser.add_argument(
-        "--n_epoches_train", default=1, type=int, help="How many epochs to train"
+        "--n_epoches_train",
+        "--num_train_epochs",
+        default=1,
+        type=int,
+        help="How many epochs to train",
     )
     parser.add_argument(
         "--eval_runs",
@@ -72,10 +68,11 @@ def parse_args():
 
     ### Wandb Arguments
     parser.add_argument("--wandb", action="store_true", help="To use wandb")
+    parser.add_argument("--comet", action="store_true", help="To use comet")
     parser.add_argument(
         "--run_prefix", default=None, help="Run prefix for the experiment run name"
     )
-    parser.add_argument("--wandb_project", default="OPTIM_TEST")
+    parser.add_argument("--wandb_project", default="MIKOLA_DROP_SOAP")
     parser.add_argument(
         "--verbose",
         action="store_true",
@@ -110,14 +107,20 @@ def parse_args():
             "--momentum", default=0.9, type=float, help="First momentum"
         )
 
-    if args1.optimizer in ["soap"]:
+    if args1.optimizer in ["soap", "mikola_drop_soap"]:
         parser.add_argument(
             "--shampoo_beta",
             default=-1,
             type=float,
             help="momentum for SOAP. if -1, the equals to beta2",
         )
-    if args1.optimizer in ["shampoo", "soap", "diag-hvp"]:
+        parser.add_argument(
+            "--max_precond_dim",
+            default=10_000,
+            type=int,
+            help="maximum dimension of preconditioner for SOAP-like algorithms",
+        )
+    if args1.optimizer in ["shampoo", "soap", "diag-hvp", "mikola_drop_soap"]:
         parser.add_argument(
             "--update_freq",
             default=1,
@@ -130,6 +133,14 @@ def parse_args():
         )
         parser.add_argument(
             "--adamw_lr", default=None, type=float, help="lr for adam in "
+        )
+    if args1.optimizer in ["mikola_drop_soap"]:
+        parser.add_argument(
+            "--init",
+            default="kron",
+            type=str,
+            choices=["eps", "kron", "sum"],
+            help="Initialization method for Mikola Drop Soap",
         )
 
     ### Problem Specific Arguments
@@ -146,11 +157,12 @@ def parse_args():
         raise ValueError(
             f"""
             Unknown dataset: {args1.dataset}.
-            Possible datasets are:
+            Possible variants are:
             LIBSVM: {LIBSVM_DATASETS}
             CV: {CV_DATASETS}
             GLUE (FINE-TUNING): {GLUE_DATASETS}
-            CAUSAL LLM (FINE-TUNING): {LLM_DATASETS}"""
+            CAUSAL LLM (FINE-TUNING): {LLM_DATASETS}
+            """
         )
 
     args, unparced_args = parser.parse_known_args()

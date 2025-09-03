@@ -263,7 +263,7 @@ def set_arguments_ft(parser):
     )
     parser.add_argument(
         "--warmup_steps",
-        default=100,
+        default=0,
         type=int,
         help="Number of warmup steps for learning rate",
     )

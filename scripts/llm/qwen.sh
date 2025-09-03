@@ -5,7 +5,6 @@ clear
 # Based on the unified fine-tuning architecture
 
 export CUDA_VISIBLE_DEVICES=2
-export HF_AUTH_TOKEN=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
 export TOKENIZERS_PARALLELISM=false
 
 # Default dataset (can be overridden)
@@ -40,8 +39,8 @@ python ./src/run_experiment.py \
 
 # Alternative models:
 # Qwen/Qwen2-7B
-# meta-llama/Llama-2-7b-hf (requires HF_AUTH_TOKEN=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)
-# meta-llama/Llama-3.1-8B (requires HF_AUTH_TOKEN=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)
+# meta-llama/Llama-2-7b-hf (requires HF_AUTH_TOKEN)
+# meta-llama/Llama-3.1-8B (requires HF_AUTH_TOKEN)
 
 # Available LLM datasets:
 # gsm8k aqua commonsensqa boolq addsub multiarith singleeq

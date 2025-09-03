@@ -10,7 +10,23 @@ from utils_llm import DatasetRegistry
 
 import warnings
 
-DATASETS = ["mathqa", "coin_flip"]
+DATASETS = [
+    "coin_flip",
+    "gsm8k",
+    "aqua",
+    "commonsensqa",
+    "boolq",
+    "addsub",
+    "multiarith",
+    "singleeq",
+    "strategyqa",
+    "svamp",
+    "bigbench_date",
+    "object_tracking",
+    "coin_flip",
+    "last_letters",
+    "mathqa",
+]
 
 warnings.filterwarnings("ignore")
 
