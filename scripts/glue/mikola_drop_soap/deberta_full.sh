@@ -3,12 +3,12 @@ clear
 
 #for lr in 1e-4 5e-4 1e-3 5e-3 1e-2
 # 5e-5 8e-5 1e-4 2e-4 1e-4 5e-4 1e-3
-for lr in 1e-4
+for lr in 1e-5 5e-5 1e-4 5e-4
 do
-    CUDA_VISIBLE_DEVICES=7 python ./src/run_experiment.py \
-        --dataset qqp \
+    CUDA_VISIBLE_DEVICES=6 python ./src/run_experiment.py \
+        --dataset qnli \
         --model microsoft/deberta-v3-base \
-        --optimizer soap \
+        --optimizer mikola_drop_soap \
         --init eps \
         --batch_size 16 \
         --gradient_accumulation_steps 2 \
