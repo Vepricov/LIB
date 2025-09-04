@@ -139,7 +139,7 @@ class GSM8KDatasetBuilder(DatasetBuilder):
         return "answer only numbers, write answer first."
 
     def build_dataset(self):
-        dataset = load_dataset("openai/gsm8k", "main", trust_remote_code=True)
+        dataset = load_dataset("openai/gsm8k", "main")
         train_data = dataset["train"]
         eval_data = dataset["test"]
 
@@ -384,7 +384,7 @@ class MathQADatasetBuilder(DatasetBuilder):
         return "answer only the numbers, write answer first."
 
     def build_dataset(self):
-        dataset = load_dataset("allenai/math_qa", trust_remote_code=True)
+        dataset = load_dataset("allenai/math_qa")
         train_data = dataset["train"]
         test_data = dataset["test"]
 
