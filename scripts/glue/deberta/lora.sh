@@ -1,7 +1,6 @@
 clear
 #for dataset in cola mnli mrpc qnli qqp rte sst2 stsb
-export HF_AUTH_TOKEN=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
-CUDA_VISIBLE_DEVICES=7 python ./src/run_experiment.py \
+CUDA_VISIBLE_DEVICES=0 python ./src/run_experiment.py \
     --dataset sst2 \
     --model microsoft/deberta-v3-base \
     --optimizer muon \
@@ -11,7 +10,8 @@ CUDA_VISIBLE_DEVICES=7 python ./src/run_experiment.py \
     --lr_scheduler_type linear \
     --warmup_ratio 0.1 \
     --max_train_steps 5000 \
-    --eval_strategy epoch \
+    --eval_strategy steps \
+    --eval_steps 1 \
     --save_strategy no \
     --ft_strategy LoRA \
     --lora_r 1 \
