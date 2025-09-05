@@ -31,11 +31,12 @@ This library allows researchers and practitioners to:
 
 ### Environment Setup
 
-You can create the required environment using the provided `environment.yaml` file:
+You can create the required environment using the `venv` and `requirements.txt` files:
 
 ```bash
-conda env create -f environment.yaml
-conda activate optim_lib
+python -m venv optim_venv
+source optim_venv/bin/activate
+pip install -r requirements.txt
 ```
 
 This will install all necessary dependencies including PyTorch, transformers, and other required libraries.
