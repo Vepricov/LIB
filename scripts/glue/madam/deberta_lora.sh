@@ -6,7 +6,7 @@ do
     CUDA_VISIBLE_DEVICES=0 python ./src/run_experiment.py \
         --dataset mnli \
         --model microsoft/deberta-v3-base \
-        --optimizer muon \
+        --optimizer taia \
         --init eps \
         --batch_size 16 \
         --gradient_accumulation_steps 2 \

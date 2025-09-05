@@ -8,7 +8,7 @@ do
     CUDA_VISIBLE_DEVICES=7 python ./src/run_experiment.py \
         --dataset qqp \
         --model microsoft/deberta-v3-base \
-        --optimizer soap \
+        --optimizer taia \
         --init eps \
         --batch_size 16 \
         --gradient_accumulation_steps 2 \

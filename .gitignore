@@ -15,6 +15,7 @@ results_raw/
 wandb/
 tuned_params/
 src/fine_tuning_new/
+*_venv/
 
 # Compiled files
 *.com
