@@ -78,11 +78,6 @@ def main(args):
         )
         wandb.config.update(params_info_dict, allow_val_change=True)
     ############################# Training #####################################
-    report_to = ["wandb"] if args.wandb else []
-    if args.comet:
-        report_to += ["comet"]
-    if report_to == []:
-        report_to = ["none"]
     training_args = TrainingArguments(
         output_dir=f"./src/fine_tuning/glue/{args.results_path}",
         do_train=not args.do_not_train,
@@ -108,8 +103,7 @@ def main(args):
         run_name=args.run_name,
         bf16=(args.dtype == "bfloat16"),
         fp16=(args.dtype == "float16"),
-        report_to=report_to,
-        # remove_unused_columns=False if peft_args is not None else True,
+        report_to=["wandb"] if args.wandb else ["none"],
         label_names=["labels"],  # peft and compute_metrics() problem
     )
     trainer = Trainer(

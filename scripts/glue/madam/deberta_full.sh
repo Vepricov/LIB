@@ -9,7 +9,8 @@ do
         --dataset qqp \
         --model microsoft/deberta-v3-base \
         --optimizer taia \
-        --init eps \
+        --lmo spectral \
+        --precondition_type adam \
         --batch_size 16 \
         --gradient_accumulation_steps 2 \
         --lr $lr \
