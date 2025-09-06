@@ -5,8 +5,8 @@ clear
 # 5e-5 8e-5 1e-4 2e-4 1e-4 5e-4 1e-3
 for lr in 1e-5 5e-5 1e-4 5e-4
 do
-    CUDA_VISIBLE_DEVICES=6 python ./src/run_experiment.py \
-        --dataset qnli \
+    CUDA_VISIBLE_DEVICES=5 python ./src/run_experiment.py \
+        --dataset qqp \
         --model microsoft/deberta-v3-base \
         --optimizer mikola_drop_soap \
         --init eps \

@@ -415,14 +415,79 @@ class MathQADatasetBuilder(DatasetBuilder):
                 self.eval_answers.append(a)
 
 
+class HellaSwagDatasetBuilder(DatasetBuilder):
+    def get_intro_blurb(self):
+        return "Choose the correct ending, write only it, word by word."
+
+    def build_dataset(self):
+        dataset = load_dataset("Rowan/hellaswag", split=["train", "validation"])
+        train_data = dataset[0]
+        test_data = dataset[1]
+
+        for item in train_data:
+            context = item["ctx"].replace("\n", "").replace("\\n", "")
+            ending_options = item["endings"]
+            answer = ending_options[int(item["label"])]
+            ending_options_str = "; ".join(ending_options)
+            if context and answer:
+                self.train_questions.append(
+                    context + f"... [Ending options]: {ending_options_str}."
+                )
+                self.train_answers.append(answer)
+
+        for item in test_data:
+            context = item["ctx"].replace("\n", "").replace("\\n", "")
+            ending_options = item["endings"]
+            answer = ending_options[int(item["label"])]
+            ending_options_str = "; ".join(ending_options)
+            if context and answer:
+                self.eval_questions.append(
+                    context + f"... [Ending options]: {ending_options_str}."
+                )
+                self.eval_answers.append(answer)
+
+
+class ArcChallengeDatasetBuilder(DatasetBuilder):
+    def get_intro_blurb(self):
+        return "Choose the correct answer, write only it, word by word."
+
+    def build_dataset(self):
+        dataset = load_dataset(
+            "allenai/ai2_arc", "ARC-Challenge", split=["train", "test"]
+        )
+        train_data = dataset[0]
+        test_data = dataset[1]
+
+        for item in train_data:
+            question = item["question"]
+            choices = item["choices"]
+            answer = dict(zip(choices["label"], choices["text"])).get(item["answerKey"])
+            ending_options_str = "; ".join(choices["text"])
+            if question and answer:
+                self.train_questions.append(
+                    question + f" [Answer options]: {ending_options_str}."
+                )
+                self.train_answers.append(answer)
+
+        for item in test_data:
+            question = item["question"]
+            choices = item["choices"]
+            answer = dict(zip(choices["label"], choices["text"])).get(item["answerKey"])
+            ending_options_str = "; ".join(choices["text"])
+            if question and answer:
+                self.eval_questions.append(
+                    question + f" [Answer options]: {ending_options_str}."
+                )
+                self.eval_answers.append(answer)
+
+
 class DatasetRegistry:
     """Registry for dataset paths and builders"""
 
     DATASET_PATHS = {
         "aqua": "data/AQuA/train.json",
-        "gsm8k": "data/grade-school-math/train.jsonl",
         "commonsensqa": "data/CommonsenseQA/train_rand_split.jsonl",
-        "boolq": "data/BoolQ/train.jsonl",
+        "boolq": "data/boolq/boolq_train.jsonl",
         "addsub": "data/AddSub/AddSub.json",
         "multiarith": "data/MultiArith/MultiArith.json",
         "singleeq": "data/SingleEq/questions.json",
@@ -436,7 +501,7 @@ class DatasetRegistry:
 
     VAL_DATASET_PATHS = {
         "commonsensqa": "data/CommonsenseQA/dev_rand_split.jsonl",
-        "boolq": "data/BoolQ/val.jsonl",
+        "boolq": "data/boolq/boolq_dev.jsonl",
     }
 
     @classmethod
@@ -466,6 +531,8 @@ class DatasetRegistry:
             "coin_flip": CoinFlipLastLettersDatasetBuilder,
             "last_letters": CoinFlipLastLettersDatasetBuilder,
             "mathqa": MathQADatasetBuilder,
+            "hella_swag": HellaSwagDatasetBuilder,
+            "arc_challenge": ArcChallengeDatasetBuilder,
         }
 
         if args.dataset not in builders:

@@ -26,6 +26,8 @@ DATASETS = [
     "coin_flip",
     "last_letters",
     "mathqa",
+    "hella_swag",
+    "arc_challenge",
 ]
 
 warnings.filterwarnings("ignore")
@@ -133,6 +135,7 @@ class Finetuner:
         logger.info("Setting up PEFT adapters...")
 
         peft_args = utils.get_peft_arguments(self.args)
+        peft_args.task_type = "CAUSAL_LM"
         if peft_args is not None:
             self.model = peft.get_peft_model(self.model, peft_args)
 
@@ -141,12 +144,15 @@ class Finetuner:
             self.model, verbose=True
         )
 
+        num_peft_adapters = utils.count_atapters(self.model, self.args.ft_strategy)
+
         if self.args.wandb:
             wandb.log(
                 {
                     "trainable_params_count": tr_param_count,
                     "total_param_count": all_param_count,
                     "trainable_params_percentage": tr_persent,
+                    "num_peft_adapters": num_peft_adapters,
                 }
             )
 
@@ -169,7 +175,7 @@ class Finetuner:
 
         if train_questions and len(train_questions) > 0:
             train_dict = {
-                "question": ["Question: " + q for q in train_questions],
+                "question": ["Problem: " + q for q in train_questions],
                 "response": train_answers,
                 "raw_x": train_questions,
                 "raw_y": train_answers,
@@ -178,7 +184,7 @@ class Finetuner:
 
         if eval_questions and len(eval_questions) > 0:
             eval_dict = {
-                "question": ["Question: " + q for q in eval_questions],
+                "question": ["Problem: " + q for q in eval_questions],
                 "response": eval_answers,
                 "raw_x": eval_questions,
                 "raw_y": eval_answers,
@@ -245,6 +251,7 @@ class Finetuner:
             gradient_accumulation_steps=self.args.grad_acc_steps,
             lr_scheduler_type=self.args.lr_scheduler_type,
             warmup_steps=self.args.warmup_steps,
+            warmup_ratio=self.args.warmup_ratio,
             learning_rate=self.args.lr,
             num_train_epochs=self.args.n_epoches_train,
             max_steps=self.args.max_steps_train,
@@ -255,14 +262,15 @@ class Finetuner:
             save_steps=self.args.save_steps,
             bf16=(self.args.dtype == "bfloat16"),
             fp16=(self.args.dtype == "float16"),
-            logging_dir=f"./src/fine_tuning/llm/{self.args.results_path}/{self.args.run_name}",
+            logging_dir=f"./src/fine_tuning/llm/{self.args.results_path}/{self.args.run_name.split('__')[0]}",
+            output_dir=f"./src/fine_tuning/llm/{self.args.results_path}/{self.args.run_name.split('__')[0]}",
             run_name=self.args.run_name,
             report_to=["wandb"] if self.args.wandb else ["none"],
         )
 
         optimizer = self.get_optimizer()
 
-        trainer = Trainer(
+        self.trainer = Trainer(
             model=self.model,
             train_dataset=train_dataset,
             args=training_args,
@@ -277,9 +285,10 @@ class Finetuner:
         torch.cuda.empty_cache()
 
         # Train the model
-        train_result = trainer.train()
+        train_result = self.trainer.train()
         metrics = train_result.metrics
-        trainer.log_metrics("train", metrics)
+        self.trainer.log_metrics("train", metrics)
+        self.trainer.save_metrics("train", metrics)
         logger.info(f"Training completed. Metrics: {metrics}")
 
     def evaluate(self):
@@ -314,13 +323,11 @@ class Finetuner:
                 # Generate prediction
                 predicted_response = generator(
                     item["text"],
-                    max_new_tokens=len(item["raw_y"]) + 2,
+                    max_new_tokens=len(self.tokenizer.tokenize(item["raw_y"])) + 1,
                     num_return_sequences=1,
                 )[0]["generated_text"]
-                predicted_response = predicted_response.replace(" ", "").replace(
-                    "\n", ""
-                )
-                item["raw_y"] = item["raw_y"].replace(" ", "").replace("\n", "")
+                predicted_response = predicted_response.replace("\n", "")
+                item["raw_y"] = item["raw_y"].replace("\n", "")
                 # Check if correct answer is in prediction
                 if item["raw_y"] in predicted_response:
                     correct += 1
@@ -347,7 +354,7 @@ class Finetuner:
         if total > 0:
             final_accuracy = (correct / total) * 100
             logger.info(f"[FINAL] Accuracy: {final_accuracy:.2f}%")
-
+            self.trainer.save_metrics("eval", {"accuracy": final_accuracy})
             if self.args.wandb:
                 wandb.log({"final_accuracy": final_accuracy})
         else:

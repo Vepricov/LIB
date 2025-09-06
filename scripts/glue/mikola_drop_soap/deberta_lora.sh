@@ -1,10 +1,10 @@
 clear
 #for dataset in cola mnli mrpc qnli qqp rte sst2 stsb
 
-for lr in 1e-5 1e-4 5e-4 1e-3 5e-3 1e-2
+for lr in 1e-4 5e-4 1e-3
 do
-    CUDA_VISIBLE_DEVICES=0 python ./src/run_experiment.py \
-        --dataset mnli \
+    CUDA_VISIBLE_DEVICES=6 python ./src/run_experiment.py \
+        --dataset qqp \
         --model microsoft/deberta-v3-base \
         --optimizer muon \
         --init eps \
