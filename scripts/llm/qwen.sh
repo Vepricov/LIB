@@ -16,9 +16,10 @@ python ./src/run_experiment.py \
     --dataset ${DATASET_NAME} \
     --model Qwen/Qwen2-7B \
     --padding_side left \
-    --optimizer adamw \
+    --optimizer taia \
+    --lmo spectral \
+    --precondition_type adam \
     --batch_size 1 \
-    --eval_batch_size 1 \
     --gradient_accumulation_steps 4 \
     --lr 2e-4 \
     --weight_decay 1e-4 \
@@ -27,13 +28,8 @@ python ./src/run_experiment.py \
     --max_train_steps 10 \
     --max_seq_length 512 \
     --logging_steps 1 \
-    --ft_strategy LoRA \
-    --lora_r 16 \
-    --lora_alpha 32 \
-    --lora_dropout 0.05 \
-    --quantization_bit 4 \
+    --ft_strategy Full \
     --dtype bfloat16 \
-    --gradient_accumulation 4 \
     --use_fast_tokenizer \
     --wandb \
 
