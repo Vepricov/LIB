@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 clear
-for optimizer in adamw
+for optimizer in mikola_drop_soap_old
 do
     export CUDA_VISIBLE_DEVICES=3
     python ./src/run_experiment.py \
-        --problem libsvm \
         --dataset mushrooms \
         --eval_runs 1 \
         --n_epoches_train 5 \
@@ -13,12 +12,10 @@ do
         --hidden_dim 10 \
         --no_bias \
         --use_old_tune_params \
-        --lmo spectral \
-        --precondition_type norm \
         --weight_init uniform \
         --momentum 0.9 \
         --eps 1e-40 \
-        --ns_steps 20 \
+        --report_fisher_diff \
         --wandb \
         # --wandb # --use_old_tune_params \ --tune \
 done

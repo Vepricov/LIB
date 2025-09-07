@@ -107,7 +107,7 @@ def parse_args():
             "--momentum", default=0.9, type=float, help="First momentum"
         )
 
-    if args1.optimizer in ["soap", "mikola_drop_soap"]:
+    if args1.optimizer in ["soap", "mikola_drop_soap", "mikola_drop_soap_old"]:
         parser.add_argument(
             "--shampoo_beta",
             default=-1,
@@ -120,7 +120,18 @@ def parse_args():
             type=int,
             help="maximum dimension of preconditioner for SOAP-like algorithms",
         )
-    if args1.optimizer in ["shampoo", "soap", "diag-hvp", "mikola_drop_soap"]:
+        parser.add_argument(
+            "--report_fisher_diff",
+            action="store_true",
+            help="Report Fisher difference",
+        )
+    if args1.optimizer in [
+        "shampoo",
+        "soap",
+        "diag-hvp",
+        "mikola_drop_soap",
+        "mikola_drop_soap_old",
+    ]:
         parser.add_argument(
             "--update_freq",
             default=1,
@@ -134,7 +145,7 @@ def parse_args():
         parser.add_argument(
             "--adamw_lr", default=None, type=float, help="lr for adam in "
         )
-    if args1.optimizer in ["mikola_drop_soap"]:
+    if args1.optimizer in ["mikola_drop_soap", "mikola_drop_soap_old"]:
         parser.add_argument(
             "--init",
             default="kron",

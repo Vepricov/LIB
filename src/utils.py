@@ -91,6 +91,7 @@ def get_run_name(args, parser, tuning=False):
         "scale_bound",
         "weight_init",
         "ns_steps",
+        "report_fisher_diff",
     ]
     if args.optimizer in ["taia", "adam-sania"]:
         ignore_args_tuning.append("scale")
@@ -198,8 +199,8 @@ def get_peft_arguments(args):
             "query_proj",
             "key_proj",
             "value_proj",
-            "intermediate.dense",
-            "output.dense",
+            # "intermediate.dense",
+            # "output.dense",
         ]
     elif "bart" in args.model.lower():
         peft_args.target_modules = [

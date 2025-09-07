@@ -213,24 +213,20 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                         max_precond_dim=group["max_precond_dim"],
                         merge_dims=group["merge_dims"],
                     )
-                self.update_preconditioner(
-                    grad,
-                    state,
-                    max_precond_dim=group["max_precond_dim"],
-                    merge_dims=group["merge_dims"],
-                    precondition_1d=group["precondition_1d"],
-                    init=group["init"],
-                )
-                # continue  # first step is skipped so that we never use the current gradients in the projection.
+                    self.update_preconditioner(
+                        grad,
+                        state,
+                        max_precond_dim=group["max_precond_dim"],
+                        merge_dims=group["merge_dims"],
+                        precondition_1d=group["precondition_1d"],
+                        init=group["init"],
+                    )
+                    continue  # first step is skipped so that we never use the current gradients in the projection.
 
                 # Projecting gradients to the eigenbases of Shampoo's preconditioner
                 # i.e. projecting to the eigenbases of matrices in state['GG']
 
-                if (
-                    self.report_fisher_diff
-                    and len(grad.shape) == 2
-                    and max(grad.shape) < group["max_precond_dim"]
-                ):
+                if self.report_fisher_diff and len(grad.shape) == 2:
                     import wandb
 
                     if "H" not in state:
@@ -318,14 +314,14 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                     p.add_(p, alpha=(-group["lr"] * group["weight_decay"]))
 
                 # Update is done after the gradient step to avoid using current gradients in the projection.
-                # self.update_preconditioner(
-                #     grad,
-                #     state,
-                #     max_precond_dim=group["max_precond_dim"],
-                #     merge_dims=group["merge_dims"],
-                #     precondition_1d=group["precondition_1d"],
-                #     init=group["init"],
-                # )
+                self.update_preconditioner(
+                    grad,
+                    state,
+                    max_precond_dim=group["max_precond_dim"],
+                    merge_dims=group["merge_dims"],
+                    precondition_1d=group["precondition_1d"],
+                    init=group["init"],
+                )
 
         return loss
 
@@ -393,11 +389,7 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
             else:
                 grad = grad.reshape(original_shape)
 
-        if (
-            self.report_fisher_diff
-            and len(grad.shape) == 2
-            and max(grad.shape) < max_precond_dim
-        ):
+        if self.report_fisher_diff and len(grad.shape) == 2:
             import wandb
 
             Q_H = torch.kron(state["Q"][0], state["Q"][1])
