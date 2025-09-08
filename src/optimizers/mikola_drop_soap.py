@@ -141,9 +141,8 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                 f"$$$$$$$$$$$$$ precondition_frequency = {precondition_frequency} $$$$$$$$$$$$$"
             )
             self.reported_diff = {
-                "fisher_diff": None,
-                "diag_diff": None,
                 "step": -1,
+                "fisher_diff": None,
             }
 
     def merge_dims(self, grad, max_precond_dim):
@@ -204,7 +203,22 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                     state["exp_avg"] = torch.zeros_like(grad)
                     # Exponential moving average of squared gradient values
                     state["exp_avg_sq"] = torch.zeros_like(grad)
-
+                    if len(grad.shape) == 2:
+                        ##############################
+                        ##### RANK-1 ADAM UPDATE #####
+                        ##############################
+                        state["l_t"] = (
+                            torch.ones(
+                                [grad.shape[0], 1], dtype=grad.dtype, device=grad.device
+                            )
+                            * group["eps"]
+                        )
+                        state["r_t"] = (
+                            torch.ones(
+                                [grad.shape[1], 1], dtype=grad.dtype, device=grad.device
+                            )
+                            * group["eps"]
+                        )
                 if "Q" not in state:
                     self.init_preconditioner(
                         grad,
@@ -239,7 +253,8 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                     max_precond_dim=group["max_precond_dim"],
                 )
 
-                exp_avg, exp_avg_sq = state["exp_avg"], state["exp_avg_sq"]
+                exp_avg = state["exp_avg"]
+                exp_avg_sq = state["exp_avg_sq"]
                 beta1, beta2 = group["betas"]
 
                 state["step"] += 1
@@ -247,10 +262,55 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                 # Decay the first and second moment running average coefficient
                 # In-place operations to update the averages at the same time
                 exp_avg.mul_(beta1).add_(grad, alpha=(1.0 - beta1))
-                # exp_avg_sq.mul_(beta2).add_(
-                #     grad_projected.square(), alpha=(1.0 - beta2)
-                # )
-                exp_avg_sq += grad_projected.square()
+                if len(grad.shape) == 2:
+                    ##############################
+                    ##### RANK-1 ADAM UPDATE #####
+                    ##############################
+                    # exp_avg_sq += grad_projected.square()
+                    # TODO: revrite in-place
+                    l_prev = state["l_t"].clone()
+                    r_prev = state["r_t"].clone()
+                    state["l_t"] = (
+                        beta2 * state["l_t"] @ state["r_t"].T @ state["r_t"]
+                        + (1 - beta2) * grad_projected.square() @ state["r_t"]
+                        # state["l_t"] @ state["r_t"].T @ state["r_t"]
+                        # + grad_projected.square() @ state["r_t"]
+                    )
+                    # state["l_t"] = exp_avg_sq @ state["r_t"]
+                    state["l_t"] /= state["l_t"].norm()
+
+                    state["r_t"] = (
+                        beta2 * state["r_t"] @ state["l_t"].T @ state["l_t"]
+                        + (1 - beta2) * grad_projected.square().T @ state["l_t"]
+                        # state["r_t"] @ state["l_t"].T @ state["l_t"]
+                        # + grad_projected.square().T @ state["l_t"]
+                    )
+                    # state["r_t"] = exp_avg_sq.T @ state["l_t"]
+                    state["r_t"] /= state["r_t"].norm()
+
+                    c = (
+                        beta2 * (state["l_t"].T @ l_prev) * (state["r_t"].T @ r_prev)
+                        + (1 - beta2)
+                        * state["l_t"].T
+                        @ grad_projected.square()
+                        @ state["r_t"]
+                        # (state["l_t"].T @ l_prev) * (state["r_t"].T @ r_prev)
+                        # + state["l_t"].T @ grad_projected.square() @ state["r_t"]
+                    )
+                    # c = state["l_t"].T @ exp_avg_sq @ state["r_t"]
+                    state["l_t"] *= torch.sqrt(c)
+                    state["r_t"] *= torch.sqrt(c)
+
+                    # denom = exp_avg_sq.sqrt().add_(group["eps"])
+                    denom = (state["l_t"] @ state["r_t"].T).sqrt()
+                else:
+                    ###############################
+                    ##### DEFAULT ADAM UPDATE #####
+                    ###############################
+                    exp_avg_sq.mul_(beta2).add_(
+                        grad_projected.square(), alpha=(1.0 - beta2)
+                    )
+                    denom = exp_avg_sq.sqrt().add_(group["eps"])
 
                 if (
                     self.report_fisher_diff
@@ -273,15 +333,21 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                                 {
                                     "fisher_diff": self.reported_diff["fisher_diff"],
                                     "diag_diff": self.reported_diff["diag_diff"],
+                                    "rank_1_adam_diff": self.reported_diff[
+                                        "rank_1_adam_diff"
+                                    ],
                                 }
                             )
                         self.reported_diff["fisher_diff"] = 0
                         self.reported_diff["diag_diff"] = 0
+                        self.reported_diff["rank_1_adam_diff"] = 0
                         self.reported_diff["step"] = state["step"]
 
                     Q_approx = torch.kron(state["Q"][0], state["Q"][1])
                     H_approx = (
-                        Q_approx @ torch.diag(exp_avg_sq.reshape(-1)) @ Q_approx.T
+                        Q_approx
+                        @ torch.diag((state["l_t"] @ state["r_t"].T).reshape(-1))
+                        @ Q_approx.T
                     )
                     H_rot = Q_approx.T @ state["H"] @ Q_approx
                     self.reported_diff["fisher_diff"] += (
@@ -290,8 +356,10 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                     self.reported_diff["diag_diff"] += (
                         torch.linalg.norm(torch.diag(H_rot) - H_rot) ** 2
                     )
-
-                denom = exp_avg_sq.sqrt().add_(group["eps"])
+                    self.reported_diff["rank_1_adam_diff"] += (
+                        torch.linalg.norm(exp_avg_sq - state["l_t"] @ state["r_t"].T)
+                        ** 2
+                    )
 
                 # Projecting the exponential moving average of gradients to the eigenbases of Shampoo's preconditioner
                 # i.e. projecting to the eigenbases of matrices in state['GG']
@@ -502,7 +570,7 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
             state["Q"] = self.get_orthogonal_matrix(state["GG"])
         if state["step"] > 0 and state["step"] % state["precondition_frequency"] == 0:
             state["Q"] = self.get_orthogonal_matrix_QR(
-                state, max_precond_dim, merge_dims
+                state, max_precond_dim, merge_dims, is_kron=len(grad.shape) == 2
             )
 
     def project_back(self, grad, state, merge_dims=False, max_precond_dim=10000):
@@ -571,7 +639,9 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
             final.append(Q)
         return final
 
-    def get_orthogonal_matrix_QR(self, state, max_precond_dim=10000, merge_dims=False):
+    def get_orthogonal_matrix_QR(
+        self, state, max_precond_dim=10000, merge_dims=False, is_kron=False
+    ):
         """
         Computes the eigenbases of the preconditioner using one round of power iteration
         followed by torch.linalg.qr decomposition.
@@ -597,38 +667,56 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                 matrix.append(m.data.float())
                 orth_matrix.append(o.data.float())
 
-        orig_shape = state["exp_avg_sq"].shape
-        if self._data_format == "channels_last" and len(orig_shape) == 4:
-            permuted_shape = state["exp_avg_sq"].permute(0, 3, 1, 2).shape
-        if merge_dims:
-            exp_avg_sq = self.merge_dims(state["exp_avg_sq"], max_precond_dim)
+        if is_kron:
+            final = []
+            for ind, (m, o) in enumerate(zip(matrix, orth_matrix)):
+                if len(m) == 0:
+                    final.append([])
+                    continue
+                est_eig = torch.diag(o.T @ m @ o)
+                sort_idx = torch.argsort(est_eig, descending=True)
+                if ind == 0:
+                    state["l_t"] = state["l_t"].index_select(0, sort_idx)
+                else:
+                    state["r_t"] = state["r_t"].index_select(0, sort_idx)
+                o = o[:, sort_idx]
+                power_iter = m @ o
+                Q, _ = torch.linalg.qr(power_iter)
+
+                if not float_data:
+                    Q = Q.to(original_device).type(original_type)
+                final.append(Q)
         else:
-            exp_avg_sq = state["exp_avg_sq"]
-
-        final = []
-        for ind, (m, o) in enumerate(zip(matrix, orth_matrix)):
-            if len(m) == 0:
-                final.append([])
-                continue
-            est_eig = torch.diag(o.T @ m @ o)
-            sort_idx = torch.argsort(est_eig, descending=True)
-            exp_avg_sq = exp_avg_sq.index_select(ind, sort_idx)
-            o = o[:, sort_idx]
-            power_iter = m @ o
-            Q, _ = torch.linalg.qr(power_iter)
-
-            if not float_data:
-                Q = Q.to(original_device).type(original_type)
-            final.append(Q)
-
-        if merge_dims:
+            orig_shape = state["exp_avg_sq"].shape
             if self._data_format == "channels_last" and len(orig_shape) == 4:
-                exp_avg_sq = exp_avg_sq.reshape(permuted_shape).permute(0, 2, 3, 1)
+                permuted_shape = state["exp_avg_sq"].permute(0, 3, 1, 2).shape
+            if merge_dims:
+                exp_avg_sq = self.merge_dims(state["exp_avg_sq"], max_precond_dim)
             else:
-                exp_avg_sq = exp_avg_sq.reshape(orig_shape)
+                exp_avg_sq = state["exp_avg_sq"]
 
-        state["exp_avg_sq"] = exp_avg_sq
-        return final
-        return final
-        return final
+            final = []
+            for ind, (m, o) in enumerate(zip(matrix, orth_matrix)):
+                if len(m) == 0:
+                    final.append([])
+                    continue
+                est_eig = torch.diag(o.T @ m @ o)
+                sort_idx = torch.argsort(est_eig, descending=True)
+                exp_avg_sq = exp_avg_sq.index_select(ind, sort_idx)
+                o = o[:, sort_idx]
+                power_iter = m @ o
+                Q, _ = torch.linalg.qr(power_iter)
+
+                if not float_data:
+                    Q = Q.to(original_device).type(original_type)
+                final.append(Q)
+
+            if merge_dims:
+                if self._data_format == "channels_last" and len(orig_shape) == 4:
+                    exp_avg_sq = exp_avg_sq.reshape(permuted_shape).permute(0, 2, 3, 1)
+                else:
+                    exp_avg_sq = exp_avg_sq.reshape(orig_shape)
+
+            state["exp_avg_sq"] = exp_avg_sq
+
         return final
