@@ -21,7 +21,7 @@ def kron_appr(g):
     return L, R
 
 
-def proj_split(L, R, g, beta=0, init="kron"):
+def proj_split(L, R, g, beta=-1, init="kron"):
     if torch.norm(L) == 0 or torch.norm(R) == 0:
         if init == "eps":
             eps = 1e-3  # max(1.0, torch.norm(g))
@@ -34,7 +34,7 @@ def proj_split(L, R, g, beta=0, init="kron"):
         else:
             L += g @ g.T
             R += g.T @ g
-    if beta is not None:
+    if beta != -1:
         L *= beta**0.5
         R *= beta**0.5
         if beta != 1:
@@ -137,8 +137,14 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
         self._data_format = data_format
         self.report_fisher_diff = report_fisher_diff
         if report_fisher_diff:
-            self.fisher_diff = {}  # TODO: remove (?)
-            self.diag_diff = {}  # TODO: remove (?)
+            print(
+                f"$$$$$$$$$$$$$ precondition_frequency = {precondition_frequency} $$$$$$$$$$$$$"
+            )
+            self.reported_diff = {
+                "fisher_diff": None,
+                "diag_diff": None,
+                "step": -1,
+            }
 
     def merge_dims(self, grad, max_precond_dim):
         """
@@ -226,36 +232,6 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                 # Projecting gradients to the eigenbases of Shampoo's preconditioner
                 # i.e. projecting to the eigenbases of matrices in state['GG']
 
-                if (
-                    self.report_fisher_diff
-                    and len(grad.shape) == 2
-                    and max(grad.shape) < group["max_precond_dim"]
-                ):
-                    import wandb
-
-                    if "H" not in state:
-                        state["H"] = torch.zeros(
-                            [len(grad.reshape(-1)), len(grad.reshape(-1))],
-                            dtype=grad.dtype,
-                            device=grad.device,
-                        )
-                    state["H"] += torch.outer(grad.reshape(-1), grad.reshape(-1))
-                    H_dynamo = torch.kron(state["GG"][0], state["GG"][1])
-                    if state["step"] not in self.fisher_diff:
-                        if state["step"] > 0:
-                            wandb.log(
-                                {
-                                    "fisher_diff": self.fisher_diff[state["step"] - 1],
-                                }
-                            )
-                        self.fisher_diff[state["step"]] = (
-                            torch.linalg.norm(state["H"] - H_dynamo) ** 2
-                        )
-                    else:
-                        self.fisher_diff[state["step"]] += (
-                            torch.linalg.norm(state["H"] - H_dynamo) ** 2
-                        )
-
                 grad_projected = self.project(
                     grad,
                     state,
@@ -271,9 +247,49 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                 # Decay the first and second moment running average coefficient
                 # In-place operations to update the averages at the same time
                 exp_avg.mul_(beta1).add_(grad, alpha=(1.0 - beta1))
-                exp_avg_sq.mul_(beta2).add_(
-                    grad_projected.square(), alpha=(1.0 - beta2)
-                )
+                # exp_avg_sq.mul_(beta2).add_(
+                #     grad_projected.square(), alpha=(1.0 - beta2)
+                # )
+                exp_avg_sq += grad_projected.square()
+
+                if (
+                    self.report_fisher_diff
+                    and len(grad.shape) == 2
+                    and max(grad.shape) < group["max_precond_dim"]
+                ):
+                    import wandb
+
+                    if "H" not in state:
+                        state["H"] = torch.zeros(
+                            [len(grad.reshape(-1)), len(grad.reshape(-1))],
+                            dtype=grad.dtype,
+                            device=grad.device,
+                        )
+                    state["H"] += torch.outer(grad.reshape(-1), grad.reshape(-1))
+
+                    if state["step"] > self.reported_diff["step"]:
+                        if self.reported_diff["fisher_diff"] is not None:
+                            wandb.log(
+                                {
+                                    "fisher_diff": self.reported_diff["fisher_diff"],
+                                    "diag_diff": self.reported_diff["diag_diff"],
+                                }
+                            )
+                        self.reported_diff["fisher_diff"] = 0
+                        self.reported_diff["diag_diff"] = 0
+                        self.reported_diff["step"] = state["step"]
+
+                    Q_approx = torch.kron(state["Q"][0], state["Q"][1])
+                    H_approx = (
+                        Q_approx @ torch.diag(exp_avg_sq.reshape(-1)) @ Q_approx.T
+                    )
+                    H_rot = Q_approx.T @ state["H"] @ Q_approx
+                    self.reported_diff["fisher_diff"] += (
+                        torch.linalg.norm(state["H"] - H_approx) ** 2
+                    )
+                    self.reported_diff["diag_diff"] += (
+                        torch.linalg.norm(torch.diag(H_rot) - H_rot) ** 2
+                    )
 
                 denom = exp_avg_sq.sqrt().add_(group["eps"])
 
@@ -393,29 +409,6 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
             else:
                 grad = grad.reshape(original_shape)
 
-        if (
-            self.report_fisher_diff
-            and len(grad.shape) == 2
-            and max(grad.shape) < max_precond_dim
-        ):
-            import wandb
-
-            Q_H = torch.kron(state["Q"][0], state["Q"][1])
-            H_rot = Q_H.T @ state["H"] @ Q_H
-            if state["step"] not in self.diag_diff:
-                if state["step"] > 0:
-                    wandb.log(
-                        {
-                            "diag_diff": self.diag_diff[state["step"] - 1],
-                        }
-                    )
-                self.diag_diff[state["step"]] = (
-                    torch.linalg.norm(torch.diag(H_rot) - H_rot) ** 2
-                )
-            else:
-                self.diag_diff[state["step"]] += (
-                    torch.linalg.norm(torch.diag(H_rot) - H_rot) ** 2
-                )
         return grad
 
     def update_preconditioner(
@@ -635,5 +628,7 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                 exp_avg_sq = exp_avg_sq.reshape(orig_shape)
 
         state["exp_avg_sq"] = exp_avg_sq
+        return final
+        return final
         return final
         return final
