@@ -84,7 +84,6 @@ def get_run_name(args, parser, tuning=False):
         "run_name",
     ]
     ignore_args_tuning = [
-        "n_epoches",
         "lr",
         "weight_decay",
         "rotate",
@@ -92,9 +91,9 @@ def get_run_name(args, parser, tuning=False):
         "weight_init",
         "ns_steps",
         "report_fisher_diff",
+        "n_epoches_train",
+        "n_samples"
     ]
-    if args.optimizer in ["taia", "adam-sania"]:
-        ignore_args_tuning.append("scale")
     # Get the default values
     defaults = vars(parser.parse_args([]))
 

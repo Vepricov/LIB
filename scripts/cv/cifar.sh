@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 clear
-for optimizer in mikola_drop_soap soap
+for uf in 10
 do
-    export CUDA_VISIBLE_DEVICES=4
-    export OMP_NUM_THREADS=4
+    export CUDA_VISIBLE_DEVICES=5
     python ./src/run_experiment.py \
         --dataset cifar10 \
+        --optimizer mikola_drop_soap \
         --eval_runs 1 \
-        --n_epoches_train 1 \
-        --optimizer $optimizer \
-        --verbose \
+        --init eps \
+        --n_epoches_train 20 \
         --lr 1e-3 \
-        --wandb \
+        --tune_runs 20 \
+        --n_epoches_tune 1 \
         --report_fisher_diff \
-        # --use_old_tune_params --momentum 0.95 --weight_decay 1e-5 --tune \\
+        --wandb \
+        --update_freq $uf \
+        # --use_old_tune_params --momentum 0.95 --weight_decay 1e-5 --tune --report_fisher_diff \\\
 done

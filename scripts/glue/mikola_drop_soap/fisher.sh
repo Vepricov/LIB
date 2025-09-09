@@ -9,7 +9,7 @@ do
         --dataset sst2 \
         --model microsoft/deberta-v3-base \
         --optimizer soap \
-        --init eps \
+        --init kron \
         --batch_size 16 \
         --gradient_accumulation_steps 1 \
         --lr $lr \

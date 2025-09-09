@@ -58,7 +58,14 @@ def train_step(
                 total_norm += param_norm.item() ** 2
         total_norm = total_norm**0.5
 
-        optimizer.step()
+        if args.report_fisher_diff:
+            hess = model.compute_hessian() if hasattr(model, 'compute_hessian') else None
+        else:
+            hess = None
+        try:
+            optimizer.step(hess=hess)
+        except TypeError:
+            optimizer.step()
 
         if args.wandb and not tuning:
             wandb.log(

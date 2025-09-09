@@ -90,10 +90,10 @@ def parse_args():
 
     ### Otimizer Arguments
     parser.add_argument(
-        "--lr", "--learning rate", default=1e-4, type=float, help="learning rate"
+        "--lr", "--learning rate", default=None, type=float, help="learning rate"
     )  # tuneed param
     parser.add_argument(
-        "--weight_decay", "-wd", default=1e-5, type=float, help="weight decay"
+        "--weight_decay", "-wd", default=1e-6, type=float, help="weight decay"
     )  # tuneed param
     if args1.optimizer not in ["shampoo", "sgd"]:
         parser.add_argument("--beta1", default=0.9, type=float, help="First momentum")
@@ -107,7 +107,12 @@ def parse_args():
             "--momentum", default=0.9, type=float, help="First momentum"
         )
 
-    if args1.optimizer in ["soap", "mikola_drop_soap", "mikola_drop_soap_old"]:
+    if args1.optimizer in [
+        "soap",
+        "soap_new",
+        "mikola_drop_soap",
+        "mikola_drop_soap_old",
+    ]:
         parser.add_argument(
             "--shampoo_beta",
             default=-1,
@@ -128,13 +133,14 @@ def parse_args():
     if args1.optimizer in [
         "shampoo",
         "soap",
+        "soap_new",
         "diag-hvp",
         "mikola_drop_soap",
         "mikola_drop_soap_old",
     ]:
         parser.add_argument(
             "--update_freq",
-            default=1,
+            default=None,
             type=int,
             help="Freqiensy to update Q for Shampoo and SOAP",
         )
@@ -148,7 +154,7 @@ def parse_args():
     if args1.optimizer in ["mikola_drop_soap", "mikola_drop_soap_old"]:
         parser.add_argument(
             "--init",
-            default="kron",
+            default="eps",
             type=str,
             choices=["eps", "kron", "sum"],
             help="Initialization method for Mikola Drop Soap",

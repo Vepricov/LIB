@@ -78,8 +78,13 @@ class SOAP(optim.Optimizer):
         self._data_format = data_format
         self.report_fisher_diff = report_fisher_diff
         if report_fisher_diff:
-            self.fisher_diff = {}  # TODO: remove (?)
-            self.diag_diff = {}  # TODO: remove (?)
+            print(
+                f"$$$$$$$$$$$$$ precondition_frequency = {precondition_frequency} $$$$$$$$$$$$$"
+            )
+            self.reported_diff = {
+                "fisher_diff": None,
+                "step": -1,
+            }
 
     def merge_dims(self, grad, max_precond_dim):
         """
@@ -111,7 +116,7 @@ class SOAP(optim.Optimizer):
         return new_grad
 
     @torch.no_grad()
-    def step(self, closure=None):
+    def step(self, closure=None, hess=None):
         """
         Performs a single optimization step.
 
@@ -166,31 +171,6 @@ class SOAP(optim.Optimizer):
 
                 # Projecting gradients to the eigenbases of Shampoo's preconditioner
                 # i.e. projecting to the eigenbases of matrices in state['GG']
-                if self.report_fisher_diff and len(grad.shape) == 2 and max(grad.shape) < group["max_precond_dim"]:
-                    import wandb
-
-                    if "H" not in state:
-                        state["H"] = torch.zeros(
-                            [len(grad.reshape(-1)), len(grad.reshape(-1))],
-                            dtype=grad.dtype,
-                            device=grad.device,
-                        )
-                    state["H"] += torch.outer(grad.reshape(-1), grad.reshape(-1))
-                    H_soap = torch.kron(state["GG"][0], state["GG"][1])
-                    if state["step"] not in self.fisher_diff:
-                        if state["step"] > 0:
-                            wandb.log(
-                                {
-                                    "fisher_diff": self.fisher_diff[state["step"] - 1],
-                                }
-                            )
-                        self.fisher_diff[state["step"]] = (
-                            torch.linalg.norm(state["H"] - H_soap) ** 2
-                        )
-                    else:
-                        self.fisher_diff[state["step"]] += (
-                            torch.linalg.norm(state["H"] - H_soap) ** 2
-                        )
                 grad_projected = self.project(
                     grad,
                     state,
@@ -209,6 +189,60 @@ class SOAP(optim.Optimizer):
                 exp_avg_sq.mul_(beta2).add_(
                     grad_projected.square(), alpha=(1.0 - beta2)
                 )
+
+                if (
+                    self.report_fisher_diff
+                    and len(grad.shape) == 2
+                    and max(grad.shape) < group["max_precond_dim"]
+                ):
+                    import wandb
+
+                    if "H" not in state:
+                        state["H"] = torch.zeros(
+                            [len(grad.reshape(-1)), len(grad.reshape(-1))],
+                            dtype=grad.dtype,
+                            device=grad.device,
+                        )
+                    state["H"] += torch.outer(grad.reshape(-1), grad.reshape(-1))
+
+                    if state["step"] > self.reported_diff["step"]:
+                        if self.reported_diff["fisher_diff"] is not None:
+                            wandb_log = {
+                                "fisher_diff": self.reported_diff["fisher_diff"],
+                                "diag_diff": self.reported_diff["diag_diff"],
+                            }
+                            if hess is not None:
+                                wandb_log["hess_diff"] = self.reported_diff["hess_diff"]
+                                wandb_log["hess_fisher_diff"] = self.reported_diff[
+                                    "hess_fisher_diff"
+                                ]
+                            wandb.log(wandb_log)
+                        self.reported_diff["fisher_diff"] = 0
+                        self.reported_diff["diag_diff"] = 0
+                        self.reported_diff["step"] = state["step"]
+                        if hess is not None:
+                            self.reported_diff["hess_diff"] = 0
+                            self.reported_diff["hess_fisher_diff"] = 0
+
+                    Q_approx = torch.kron(state["Q"][0], state["Q"][1])
+                    H_approx = (
+                        Q_approx @ torch.diag(exp_avg_sq.reshape(-1)) @ Q_approx.T
+                    )
+                    H_approx_L_R = torch.kron(state["GG"][0], state["GG"][1])
+                    H_rot = Q_approx.T @ state["H"] @ Q_approx
+                    self.reported_diff["fisher_diff"] += (
+                        torch.linalg.norm(state["H"] - H_approx) ** 2
+                    )
+                    self.reported_diff["diag_diff"] += (
+                        torch.linalg.norm(torch.diag(H_rot) - H_rot) ** 2
+                    )
+                    if hess is not None:
+                        self.reported_diff["hess_diff"] += (
+                            torch.linalg.norm(hess - H_approx) ** 2
+                        )
+                        self.reported_diff["hess_fisher_diff"] += (
+                            torch.linalg.norm(hess - state["H"]) ** 2
+                        )
 
                 denom = exp_avg_sq.sqrt().add_(group["eps"])
 
@@ -317,26 +351,6 @@ class SOAP(optim.Optimizer):
             else:
                 permute_order = list(range(1, len(grad.shape))) + [0]
                 grad = grad.permute(permute_order)
-
-        if self.report_fisher_diff and len(grad.shape) == 2 and max(grad.shape) < max_precond_dim:
-            import wandb
-
-            Q_H = torch.kron(state["Q"][0], state["Q"][1])
-            H_rot = Q_H.T @ state["H"] @ Q_H
-            if state["step"] not in self.diag_diff:
-                if state["step"] > 0:
-                    wandb.log(
-                        {
-                            "diag_diff": self.diag_diff[state["step"] - 1],
-                        }
-                    )
-                self.diag_diff[state["step"]] = (
-                    torch.linalg.norm(torch.diag(H_rot) - H_rot) ** 2
-                )
-            else:
-                self.diag_diff[state["step"]] += (
-                    torch.linalg.norm(torch.diag(H_rot) - H_rot) ** 2
-                )
 
         if merge_dims:
             if self._data_format == "channels_last" and len(original_shape) == 4:

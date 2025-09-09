@@ -3,14 +3,16 @@ import sys
 
 # from torch_optimizer import Shampoo
 sys.path.append("src/optimizers")
-import soap, muon
+import soap
+import muon
 import mikola_drop_soap
 import mikola_drop_soap_OLD
+import soap_NEW
 
 
 def get_optimizer(args, model):
     trainable_params = [p for p in model.parameters() if p.requires_grad]
-    if args.optimizer == "adamw":
+    if args.optimizer in ["adamw", "adam"]:
         optimizer = optim.AdamW(
             params=trainable_params,
             lr=args.lr,
@@ -20,6 +22,18 @@ def get_optimizer(args, model):
         )
     elif args.optimizer == "soap":
         optimizer = soap.SOAP(
+            params=trainable_params,
+            lr=args.lr,
+            betas=(args.beta1, args.beta2),
+            shampoo_beta=args.shampoo_beta,
+            eps=args.eps,
+            weight_decay=args.weight_decay,
+            precondition_frequency=args.update_freq,
+            max_precond_dim=args.max_precond_dim,
+            report_fisher_diff=args.report_fisher_diff,
+        )
+    elif args.optimizer == "soap_new":
+        optimizer = soap_NEW.SOAP(
             params=trainable_params,
             lr=args.lr,
             betas=(args.beta1, args.beta2),

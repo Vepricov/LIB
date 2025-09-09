@@ -4,6 +4,7 @@ import wandb
 import torch
 from collections import defaultdict
 import os
+
 import optuna
 
 from problems_libsvm import libsvm_prepocess
@@ -11,7 +12,7 @@ from optimizers.main import get_optimizer
 from trainer import train
 from utils import get_run_name
 
-DATASETS = ["mushrooms", "binary"]
+DATASETS = ["mushrooms", "binary", "synthetic_classification"]
 MAIN_METRIC = "accuracy"
 
 
@@ -38,8 +39,19 @@ def run_optimization(args, metrics, tuning=False, verbose=False):
     )
 
     if tuning:
-        return np.max(val_results[f"val_{MAIN_METRIC}"])
-    idx = np.argmax(val_results[f"val_{MAIN_METRIC}"])
+        if args.dataset == "synthetic_classification":
+            return np.max(
+                val_results[f"val_{MAIN_METRIC}"]
+            )  # Higher accuracy is better for classification
+        else:
+            return np.max(val_results[f"val_{MAIN_METRIC}"])
+
+    if args.dataset == "synthetic_classification":
+        idx = np.argmax(
+            val_results[f"val_{MAIN_METRIC}"]
+        )  # Higher accuracy is better for classification
+    else:
+        idx = np.argmax(val_results[f"val_{MAIN_METRIC}"])
     for metric in test_results:
         metrics[metric].append(test_results[metric][idx])
     return metrics
@@ -58,14 +70,19 @@ def tune_params(args, parser, use_old_tune_params=True):
         except json.decoder.JSONDecodeError:
             pass
 
-    study = optuna.create_study(direction="maximize", study_name=f"{tune_name}")
+    if optuna is None:
+        raise ImportError("optuna is required for hyperparameter tuning")
+    if args.dataset == "synthetic_quadratic":
+        study = optuna.create_study(direction="minimize", study_name=f"{tune_name}")
+    else:
+        study = optuna.create_study(direction="maximize", study_name=f"{tune_name}")
 
     def tune_function(trial):
         args.lr = trial.suggest_float("lr", 1e-6, 5e0, log=True)
-        if hasattr(args, "weight_decay"):
-            args.weight_decay = trial.suggest_float(
-                "weight_decay", 1e-6, 1e-2, log=True
-            )
+        # if hasattr(args, "weight_decay"):
+        #     args.weight_decay = trial.suggest_float(
+        #         "weight_decay", 1e-6, 1e-2, log=True
+        #     )
         # if hasattr(args, "momentum"):
         #     args.momentum = trial.suggest_float("momentum", 1e-6, 1., log=True)
         # if hasattr(args, "beta1"):

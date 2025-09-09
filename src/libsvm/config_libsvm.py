@@ -21,7 +21,7 @@ def set_arguments_libsvm(parser):
     parser.add_argument(
         "--model",
         default="linear-classifier",
-        choices=["linear-classifier"],
+        choices=["linear-classifier", "softmax-linear"],
         help="Model name",
     )
     parser.add_argument(
@@ -40,6 +40,32 @@ def set_arguments_libsvm(parser):
         default="uniform",
         choices=["zeroes", "uniform", "bad_scaled", "ones", "zero/uniform"],
         help="Initial weights of the linear classifier",
+    )
+
+    ### Synthetic Classification Problem Arguments
+    parser.add_argument(
+        "--n_samples",
+        default=None,
+        type=int,
+        help="Number of samples for synthetic classification problem",
+    )
+    parser.add_argument(
+        "--input_dim",
+        default=10,
+        type=int,
+        help="Input dimension (n) for synthetic classification problem",
+    )
+    parser.add_argument(
+        "--n_classes",
+        default=5,
+        type=int,
+        help="Number of classes (m) for synthetic classification problem",
+    )
+    parser.add_argument(
+        "--noise_std",
+        default=0,
+        type=float,
+        help="Standard deviation of noise for synthetic classification problem",
     )
 
     ### Training Arguments (change defaults)
