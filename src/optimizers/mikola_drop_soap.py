@@ -26,18 +26,18 @@ def kron_appr(g, iters=100, max_precond_dim=10000):
     s = torch.norm(L)
     L /= s
     if L.shape[0] >= max_precond_dim or R.shape[0] >= max_precond_dim:
-        s = s ** 2
-    L = (L * s ** 0.5)[:, None] * L[None, :] if L.shape[0] < max_precond_dim else []
-    R = (R * s ** 0.5)[:, None] * R[None, :] if R.shape[0] < max_precond_dim else []
-    '''
+        s = s**2
+    L = (L * s**0.5)[:, None] * L[None, :] if L.shape[0] < max_precond_dim else []
+    R = (R * s**0.5)[:, None] * R[None, :] if R.shape[0] < max_precond_dim else []
+    """
     U, S, Vt = torch.linalg.svd(g)
     L = (U[:, 0] * S[0])[:, None] * U[:, 0][None, :]
     R = (Vt[0, :] * S[0])[:, None] * Vt[0, :][None, :]
-    '''
+    """
     return L, R
 
 
-def init_precond(g, L, R, init='kron', max_precond_dim=10000):
+def init_precond(g, L, R, init="kron", max_precond_dim=10000):
     if init == "eps":
         L, R = [], []
         eps = 1e-3
@@ -68,9 +68,9 @@ def proj_split(L, R, g, beta=0, init="kron", max_precond_dim=10000):
         L, R = init_precond(g, L, R, init, max_precond_dim)
     if beta is not None:
         if len(L) != 0:
-            L *= beta ** 0.5
+            L *= beta**0.5
         if len(R) != 0:
-            R *= beta ** 0.5
+            R *= beta**0.5
         if beta != 1:
             g *= (1 - beta) ** 0.5
     left_factor_norm = torch.linalg.norm(L) if len(L) != 0 else 1.0
@@ -100,7 +100,7 @@ def proj_split(L, R, g, beta=0, init="kron", max_precond_dim=10000):
 
     S1 = M * N * norm_product + torch.sum(U1 * (g @ V1 @ g.T))
     if len(L) != 0 and len(R) != 0:
-        return U1 * (S1 ** 0.5), V1 * (S1 ** 0.5)
+        return U1 * (S1**0.5), V1 * (S1**0.5)
     elif len(L) != 0:
         return U1 * (S1), []
     else:
@@ -147,24 +147,24 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
     """
 
     def __init__(
-            self,
-            params,
-            lr: float = 3e-3,
-            betas=(0.95, 0.95),
-            shampoo_beta: float = -1,
-            eps: float = 1e-8,
-            weight_decay: float = 0.01,
-            precondition_frequency: int = 10,
-            max_precond_dim: int = 10000,  #
-            merge_dims: bool = False,
-            # Merge dimensions till the product of the dimensions is less than or equal to max_precond_dim.
-            precondition_1d: bool = False,
-            normalize_grads: bool = False,
-            data_format: str = "channels_first",
-            correct_bias: bool = True,
-            init: str = "kron",
-            report_fisher_diff: bool = False,
-            adam_rank_one=True,
+        self,
+        params,
+        lr: float = 3e-3,
+        betas=(0.95, 0.95),
+        shampoo_beta: float = -1,
+        eps: float = 1e-8,
+        weight_decay: float = 0.01,
+        precondition_frequency: int = 10,
+        max_precond_dim: int = 10000,  #
+        merge_dims: bool = False,
+        # Merge dimensions till the product of the dimensions is less than or equal to max_precond_dim.
+        precondition_1d: bool = False,
+        normalize_grads: bool = False,
+        data_format: str = "channels_first",
+        correct_bias: bool = True,
+        init: str = "kron",
+        report_fisher_diff: bool = False,
+        adam_rank_one=True,
     ):
         defaults = {
             "lr": lr,
@@ -180,7 +180,15 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
             "correct_bias": correct_bias,
             "init": init,
         }
-        print('UPDATE FREQ', precondition_frequency, 'LR', lr, 'rank-1', adam_rank_one, flush=True)
+        print(
+            "UPDATE FREQ",
+            precondition_frequency,
+            "LR",
+            lr,
+            "rank-1",
+            adam_rank_one,
+            flush=True,
+        )
         super().__init__(params, defaults)
         self.adam_rank_one = adam_rank_one
         self._data_format = data_format
@@ -247,7 +255,7 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                 state = self.state[p]
 
                 # без этого кронекерова инициализация не работает
-                if torch.norm(grad) == 0 and 'step' not in state:
+                if torch.norm(grad) == 0 and "step" not in state:
                     continue
 
                 if "step" not in state:
@@ -264,16 +272,16 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                         ##### RANK-1 ADAM UPDATE #####
                         ##############################
                         state["l_t"] = (
-                                torch.ones(
-                                    [grad.shape[0], 1], dtype=grad.dtype, device=grad.device
-                                )
-                                * group["eps"]
+                            torch.ones(
+                                [grad.shape[0], 1], dtype=grad.dtype, device=grad.device
+                            )
+                            * group["eps"]
                         )
                         state["r_t"] = (
-                                torch.ones(
-                                    [grad.shape[1], 1], dtype=grad.dtype, device=grad.device
-                                )
-                                * group["eps"]
+                            torch.ones(
+                                [grad.shape[1], 1], dtype=grad.dtype, device=grad.device
+                            )
+                            * group["eps"]
                         )
 
                 if "Q" not in state:
@@ -327,25 +335,28 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                     l_prev = state["l_t"].clone()
                     r_prev = state["r_t"].clone()
                     state["l_t"] = (
-                            beta2 * state["l_t"] @ state["r_t"].T @ state["r_t"]
-                            + (1 - beta2) * grad_projected.square() @ state["r_t"]
+                        beta2 * l_prev @ r_prev.T @ r_prev
+                        + (1 - beta2) * grad_projected.square() @ r_prev
                     )
                     state["l_t"] /= state["l_t"].norm()
 
                     state["r_t"] = (
-                            beta2 * r_prev @ l_prev.T @ l_prev
-                            + (1 - beta2) * grad_projected.square().T @ state["l_t"]
+                        beta2 * r_prev @ l_prev.T @ l_prev
+                        + (1 - beta2) * grad_projected.square().T @ l_prev
                     )
                     state["r_t"] /= state["r_t"].norm()
 
                     c = (
-                            beta2 * (state["l_t"].T @ l_prev) * (state["r_t"].T @ r_prev) +
-                            (1 - beta2) * state["l_t"].T @ grad_projected.square() @ state["r_t"]
+                        beta2 * (state["l_t"].T @ l_prev) * (state["r_t"].T @ r_prev)
+                        + (1 - beta2)
+                        * state["l_t"].T
+                        @ grad_projected.square()
+                        @ state["r_t"]
                     )
                     state["l_t"] *= torch.sqrt(c)
                     state["r_t"] *= torch.sqrt(c)
 
-                    denom = (state["l_t"] @ state["r_t"].T).sqrt().add_(group["eps"])
+                    denom = (state["l_t"] @ state["r_t"].T).sqrt()
                 else:
                     ###############################
                     ##### DEFAULT ADAM UPDATE #####
@@ -356,9 +367,9 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                     denom = exp_avg_sq.sqrt().add_(group["eps"])
 
                 if (
-                        self.report_fisher_diff
-                        and len(grad.shape) == 2
-                        and max(grad.shape) < group["max_precond_dim"]
+                    self.report_fisher_diff
+                    and len(grad.shape) == 2
+                    and max(grad.shape) < group["max_precond_dim"]
                 ):
                     import wandb
 
@@ -391,34 +402,36 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                     else:
                         d = exp_avg_sq.reshape(-1)
                     self.reported_diff["denom"] = torch.norm(denom)
-                    H_approx = (
-                            Q_approx
-                            @ torch.diag(d)
-                            @ Q_approx.T
-                    )
+                    H_approx = Q_approx @ torch.diag(d) @ Q_approx.T
                     H_approx_L_R = torch.kron(state["GG"][0], state["GG"][1])
                     H_rot = Q_approx.T @ state["H"] @ Q_approx
                     self.reported_diff["fisher_diff"] += (
-                            torch.linalg.norm(state["H"] - H_approx) ** 2
+                        torch.linalg.norm(state["H"] - H_approx) ** 2
                     )
                     self.reported_diff["diag_diff"] += (
-                            torch.linalg.norm(torch.diag(torch.diag(H_rot)) - H_rot) ** 2
+                        torch.linalg.norm(torch.diag(torch.diag(H_rot)) - H_rot) ** 2
                     )
                     if self.adam_rank_one:
                         self.reported_diff["rank_1_adam_diff"] += (
-                                torch.linalg.norm(exp_avg_sq - state["l_t"] @ state["r_t"].T)
-                                ** 2
+                            torch.linalg.norm(
+                                exp_avg_sq - state["l_t"] @ state["r_t"].T
+                            )
+                            ** 2
                         )
-                    self.reported_diff['fisher_norm_{}'.format(num)] = torch.norm(state['H'])
-                    self.reported_diff['grad_norm_{}'.format(num)] = torch.norm(p.grad)
+                    self.reported_diff["fisher_norm_{}".format(num)] = torch.norm(
+                        state["H"]
+                    )
+                    self.reported_diff["grad_norm_{}".format(num)] = torch.norm(p.grad)
                     if hess is not None:
                         self.reported_diff["hess_diff"] += (
-                                torch.linalg.norm(hess - H_approx_L_R) ** 2
+                            torch.linalg.norm(hess - H_approx_L_R) ** 2
                         )
                         self.reported_diff["hess_fisher_diff"] += (
-                                torch.linalg.norm(hess - state["H"]) ** 2
+                            torch.linalg.norm(hess - state["H"]) ** 2
                         )
-                        self.reported_diff['hess_norm_{}'.format(num)] = torch.norm(hess)
+                        self.reported_diff["hess_norm_{}".format(num)] = torch.norm(
+                            hess
+                        )
 
                 # Projecting the exponential moving average of gradients to the eigenbases of Shampoo's preconditioner
                 # i.e. projecting to the eigenbases of matrices in state['GG']
@@ -433,7 +446,7 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                 if group["correct_bias"]:
                     bias_correction1 = 1.0 - beta1 ** (state["step"])
                     bias_correction2 = 1.0 - beta2 ** (state["step"])
-                    step_size = step_size * (bias_correction2 ** 0.5) / bias_correction1
+                    step_size = step_size * (bias_correction2**0.5) / bias_correction1
 
                 # Projecting back the preconditioned (by Adam) exponential moving average of gradients
                 # to the original space
@@ -445,7 +458,7 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                 )
 
                 if group["normalize_grads"]:
-                    norm_grad = norm_grad / (1e-30 + torch.mean(norm_grad ** 2) ** 0.5)
+                    norm_grad = norm_grad / (1e-30 + torch.mean(norm_grad**2) ** 0.5)
 
                 p.add_(norm_grad, alpha=-step_size)
 
@@ -473,19 +486,21 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
         return loss
 
     def init_preconditioner(
-            self,
-            grad,
-            state,
-            precondition_frequency=10,
-            shampoo_beta=0.95,
-            max_precond_dim=10000,
-            precondition_1d=False,
-            merge_dims=False,
+        self,
+        grad,
+        state,
+        precondition_frequency=10,
+        shampoo_beta=0.95,
+        max_precond_dim=10000,
+        precondition_1d=False,
+        merge_dims=False,
     ):
         """
         Initializes the preconditioner matrices (L and R in the paper).
         """
-        state["GG"] = ([])  # Will hold all the preconditioner matrices (L and R in the paper).
+        state["GG"] = (
+            []
+        )  # Will hold all the preconditioner matrices (L and R in the paper).
         if grad.dim() == 1:
             if not precondition_1d or grad.shape[0] > max_precond_dim:
                 state["GG"].append([])
@@ -537,13 +552,13 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
         return grad
 
     def update_preconditioner(
-            self,
-            grad,
-            state,
-            max_precond_dim=10000,
-            merge_dims=False,
-            precondition_1d=False,
-            init="kron",
+        self,
+        grad,
+        state,
+        max_precond_dim=10000,
+        merge_dims=False,
+        precondition_1d=False,
+        init="kron",
     ):
         """
         Updates the preconditioner matrices and the eigenbases (L, R, Q_L, Q_R in the paper).
@@ -561,7 +576,7 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                 grad,
                 beta=state["shampoo_beta"],
                 init=init,
-                max_precond_dim=max_precond_dim
+                max_precond_dim=max_precond_dim,
             )
             state["GG"][0] = L
             state["GG"][1] = R
@@ -574,13 +589,13 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                             new_grad,
                             new_grad,
                             dims=[
-                                     [
-                                         *chain(
-                                             range(idx), range(idx + 1, len(new_grad.shape))
-                                         )
-                                     ]
-                                 ]
-                                 * 2,
+                                [
+                                    *chain(
+                                        range(idx), range(idx + 1, len(new_grad.shape))
+                                    )
+                                ]
+                            ]
+                            * 2,
                         )
                         state["GG"][idx].lerp_(outer_product, 1 - state["shampoo_beta"])
             else:
@@ -591,7 +606,7 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                             grad,
                             # Contracts across all dimensions except for k.
                             dims=[[*chain(range(idx), range(idx + 1, len(grad.shape)))]]
-                                 * 2,
+                            * 2,
                         )
                         state["GG"][idx].lerp_(outer_product, 1 - state["shampoo_beta"])
 
@@ -669,7 +684,7 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
         return final
 
     def get_orthogonal_matrix_QR(
-            self, state, max_precond_dim=10000, merge_dims=False, is_kron=False
+        self, state, max_precond_dim=10000, merge_dims=False, is_kron=False
     ):
         """
         Computes the eigenbases of the preconditioner using one round of power iteration

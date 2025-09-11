@@ -159,6 +159,11 @@ def parse_args():
             choices=["eps", "kron", "sum"],
             help="Initialization method for Mikola Drop Soap",
         )
+        parser.add_argument(
+            "--adam_rank_one",
+            action="store_true",
+            help="Use rank one update",
+        )
 
     ### Problem Specific Arguments
     if args1.dataset.lower() in LIBSVM_DATASETS:

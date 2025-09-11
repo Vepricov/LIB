@@ -56,6 +56,7 @@ def get_optimizer(args, model):
             max_precond_dim=args.max_precond_dim,
             init=args.init,
             report_fisher_diff=args.report_fisher_diff,
+            adam_rank_one=args.adam_rank_one,
         )
     elif args.optimizer == "mikola_drop_soap_old":
         optimizer = mikola_drop_soap_OLD.MIKOLA_DROP_SOAP(
