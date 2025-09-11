@@ -74,6 +74,7 @@ class SOAP(optim.Optimizer):
             "normalize_grads": normalize_grads,
             "correct_bias": correct_bias,
         }
+        print('lr', lr, flush=True)
         super().__init__(params, defaults)
         self._data_format = data_format
         self.report_fisher_diff = report_fisher_diff
@@ -127,9 +128,10 @@ class SOAP(optim.Optimizer):
             loss = None
         else:
             loss = closure()
-
+        num = 0
         for group in self.param_groups:
             for p in group["params"]:
+                num+=1
                 if p.grad is None:
                     continue
                 grad = p.grad
@@ -207,15 +209,9 @@ class SOAP(optim.Optimizer):
 
                     if state["step"] > self.reported_diff["step"]:
                         if self.reported_diff["fisher_diff"] is not None:
-                            wandb_log = {
-                                "fisher_diff": self.reported_diff["fisher_diff"],
-                                "diag_diff": self.reported_diff["diag_diff"],
-                            }
-                            if hess is not None:
-                                wandb_log["hess_diff"] = self.reported_diff["hess_diff"]
-                                wandb_log["hess_fisher_diff"] = self.reported_diff[
-                                    "hess_fisher_diff"
-                                ]
+                            wandb_log = dict()
+                            for name in self.reported_diff.keys():
+                                wandb_log[name] = self.reported_diff[name]
                             wandb.log(wandb_log)
                         self.reported_diff["fisher_diff"] = 0
                         self.reported_diff["diag_diff"] = 0
@@ -234,15 +230,18 @@ class SOAP(optim.Optimizer):
                         torch.linalg.norm(state["H"] - H_approx) ** 2
                     )
                     self.reported_diff["diag_diff"] += (
-                        torch.linalg.norm(torch.diag(H_rot) - H_rot) ** 2
+                        torch.linalg.norm(torch.diag(torch.diag(H_rot)) - H_rot) ** 2
                     )
+                    self.reported_diff['fisher_norm_{}'.format(num)] = torch.norm(state['H'])
+                    self.reported_diff['grad_norm_{}'.format(num)] = torch.norm(p.grad)
                     if hess is not None:
                         self.reported_diff["hess_diff"] += (
-                            torch.linalg.norm(hess - H_approx) ** 2
+                            torch.linalg.norm(hess - H_approx_L_R) ** 2
                         )
                         self.reported_diff["hess_fisher_diff"] += (
                             torch.linalg.norm(hess - state["H"]) ** 2
                         )
+                        self.reported_diff['hess_norm_{}'.format(num)] = torch.norm(hess)
 
                 denom = exp_avg_sq.sqrt().add_(group["eps"])
 
