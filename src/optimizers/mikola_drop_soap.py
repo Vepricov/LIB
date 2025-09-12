@@ -334,20 +334,27 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                     # TODO: rewrite in-place
                     l_prev = state["l_t"].clone()
                     r_prev = state["r_t"].clone()
+
+                    l_norm = l_prev.norm()
+                    r_norm = r_prev.norm()
+
+                    l_prev /= L_norm
+                    r_prev /= r_norm
+
                     state["l_t"] = (
-                        beta2 * l_prev @ r_prev.T @ r_prev
-                        + (1 - beta2) * grad_projected.square() @ r_prev
+                        beta2 * l_norm * r_norm * l_prev
+                        + (1 - beta2) * (grad_projected.square() @ r_prev)
                     )
                     state["l_t"] /= state["l_t"].norm()
 
                     state["r_t"] = (
-                        beta2 * r_prev @ l_prev.T @ l_prev
-                        + (1 - beta2) * grad_projected.square().T @ l_prev
+                        beta2 * l_norm * r_norm * r_prev
+                        + (1 - beta2) * (grad_projected.square().T @ l_prev)
                     )
                     state["r_t"] /= state["r_t"].norm()
 
                     c = (
-                        beta2 * (state["l_t"].T @ l_prev) * (state["r_t"].T @ r_prev)
+                        beta2 * (state["l_t"].T @ l_prev) * (state["r_t"].T @ r_prev) * l_norm * r_norm
                         + (1 - beta2)
                         * state["l_t"].T
                         @ grad_projected.square()
