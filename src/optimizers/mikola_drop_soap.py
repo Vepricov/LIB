@@ -8,6 +8,8 @@ from itertools import chain
 import torch
 import torch.nn as nn
 
+import wandb
+
 from typing import Callable
 
 
@@ -192,7 +194,7 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
         super().__init__(params, defaults)
         self.adam_rank_one = adam_rank_one
         self._data_format = data_format
-        self.report_fisher_diff = report_fisher_diff
+        self.report_fisher_diff = report_fisher_diff and wandb.run
         if report_fisher_diff:
             print(
                 f"$$$$$$$$$$$$$ precondition_frequency = {precondition_frequency} $$$$$$$$$$$$$"
@@ -338,23 +340,25 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                     l_norm = l_prev.norm()
                     r_norm = r_prev.norm()
 
-                    l_prev /= L_norm
+                    l_prev /= l_norm
                     r_prev /= r_norm
 
-                    state["l_t"] = (
-                        beta2 * l_norm * r_norm * l_prev
-                        + (1 - beta2) * (grad_projected.square() @ r_prev)
+                    state["l_t"] = beta2 * l_norm * r_norm * l_prev + (1 - beta2) * (
+                        grad_projected.square() @ r_prev
                     )
                     state["l_t"] /= state["l_t"].norm()
 
-                    state["r_t"] = (
-                        beta2 * l_norm * r_norm * r_prev
-                        + (1 - beta2) * (grad_projected.square().T @ l_prev)
+                    state["r_t"] = beta2 * l_norm * r_norm * r_prev + (1 - beta2) * (
+                        grad_projected.square().T @ l_prev
                     )
                     state["r_t"] /= state["r_t"].norm()
 
                     c = (
-                        beta2 * (state["l_t"].T @ l_prev) * (state["r_t"].T @ r_prev) * l_norm * r_norm
+                        beta2
+                        * (state["l_t"].T @ l_prev)
+                        * (state["r_t"].T @ r_prev)
+                        * l_norm
+                        * r_norm
                         + (1 - beta2)
                         * state["l_t"].T
                         @ grad_projected.square()
@@ -431,7 +435,7 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
                     self.reported_diff["grad_norm_{}".format(num)] = torch.norm(p.grad)
                     if hess is not None:
                         self.reported_diff["hess_diff"] += (
-                            torch.linalg.norm(hess - H_approx_L_R) ** 2
+                            torch.linalg.norm(hess - H_approx) ** 2
                         )
                         self.reported_diff["hess_fisher_diff"] += (
                             torch.linalg.norm(hess - state["H"]) ** 2
