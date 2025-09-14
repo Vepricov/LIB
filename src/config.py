@@ -68,7 +68,6 @@ def parse_args():
 
     ### Wandb Arguments
     parser.add_argument("--wandb", action="store_true", help="To use wandb")
-    parser.add_argument("--comet", action="store_true", help="To use comet")
     parser.add_argument(
         "--run_prefix", default=None, help="Run prefix for the experiment run name"
     )
