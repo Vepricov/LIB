@@ -4,6 +4,8 @@ import torch.optim as optim
 
 from itertools import chain
 
+import wandb
+
 # Parts of the code are modifications of Pytorch's AdamW optimizer
 # Parts of the code are modifications of code from https://github.com/jiaweizzhao/GaLore/blob/master/galore_torch/galore_projector.py
 
@@ -74,10 +76,10 @@ class SOAP(optim.Optimizer):
             "normalize_grads": normalize_grads,
             "correct_bias": correct_bias,
         }
-        print('lr', lr, flush=True)
+        print("lr", lr, flush=True)
         super().__init__(params, defaults)
         self._data_format = data_format
-        self.report_fisher_diff = report_fisher_diff
+        self.report_fisher_diff = report_fisher_diff and wandb.run
         if report_fisher_diff:
             print(
                 f"$$$$$$$$$$$$$ precondition_frequency = {precondition_frequency} $$$$$$$$$$$$$"
@@ -131,7 +133,7 @@ class SOAP(optim.Optimizer):
         num = 0
         for group in self.param_groups:
             for p in group["params"]:
-                num+=1
+                num += 1
                 if p.grad is None:
                     continue
                 grad = p.grad
@@ -232,16 +234,20 @@ class SOAP(optim.Optimizer):
                     self.reported_diff["diag_diff"] += (
                         torch.linalg.norm(torch.diag(torch.diag(H_rot)) - H_rot) ** 2
                     )
-                    self.reported_diff['fisher_norm_{}'.format(num)] = torch.norm(state['H'])
-                    self.reported_diff['grad_norm_{}'.format(num)] = torch.norm(p.grad)
+                    self.reported_diff["fisher_norm_{}".format(num)] = torch.norm(
+                        state["H"]
+                    )
+                    self.reported_diff["grad_norm_{}".format(num)] = torch.norm(p.grad)
                     if hess is not None:
                         self.reported_diff["hess_diff"] += (
-                            torch.linalg.norm(hess - H_approx_L_R) ** 2
+                            torch.linalg.norm(hess - H_approx) ** 2
                         )
                         self.reported_diff["hess_fisher_diff"] += (
                             torch.linalg.norm(hess - state["H"]) ** 2
                         )
-                        self.reported_diff['hess_norm_{}'.format(num)] = torch.norm(hess)
+                        self.reported_diff["hess_norm_{}".format(num)] = torch.norm(
+                            hess
+                        )
 
                 denom = exp_avg_sq.sqrt().add_(group["eps"])
 

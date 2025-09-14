@@ -136,9 +136,14 @@ class Finetuner:
 
         peft_args = utils.get_peft_arguments(self.args)
         peft_args.task_type = "CAUSAL_LM"
-        if peft_args is not None:
+        if self.args.ft_strategy.lower() != "full":
             self.model = peft.get_peft_model(self.model, peft_args)
-
+        else:
+            for name, param in self.model.named_parameters():
+                is_trainable = any(
+                    ft_param_name in name for ft_param_name in peft_args.target_modules
+                )
+                param.requires_grad = is_trainable
         # Print trainable parameters info
         tr_param_count, all_param_count, tr_persent = utils.print_trainable_params(
             self.model, verbose=True

@@ -70,8 +70,6 @@ def tune_params(args, parser, use_old_tune_params=True):
         except json.decoder.JSONDecodeError:
             pass
 
-    if optuna is None:
-        raise ImportError("optuna is required for hyperparameter tuning")
     if args.dataset == "synthetic_quadratic":
         study = optuna.create_study(direction="minimize", study_name=f"{tune_name}")
     else:
@@ -117,6 +115,7 @@ def main(args, parser):
     if args.tune or args.use_old_tune_params:
         if args.use_old_tune_params is False:
             print("~~~~~~~~~~~~~~~ TUNING ~~~~~~~~~~~~~~~")
+            args.seed = 1
         args, tuned_params = tune_params(
             args, parser, use_old_tune_params=args.use_old_tune_params
         )
@@ -127,7 +126,7 @@ def main(args, parser):
 
     for i, seed in enumerate(range(args.eval_runs)):
         # args.seed = 52 * 52 * 52 + seed
-        args.seed = seed
+        args.seed = seed + 1
         if args.wandb:
             wandb.init(
                 project=args.wandb_project,

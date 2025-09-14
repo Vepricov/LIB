@@ -58,8 +58,10 @@ def train_step(
                 total_norm += param_norm.item() ** 2
         total_norm = total_norm**0.5
 
-        if args.report_fisher_diff:
-            hess = model.compute_hessian() if hasattr(model, 'compute_hessian') else None
+        if args.report_fisher_diff and not tuning:
+            hess = (
+                model.compute_hessian() if hasattr(model, "compute_hessian") else None
+            )
         else:
             hess = None
         try:
