@@ -311,15 +311,20 @@ class SOAP(optim.Optimizer):
         """
         Initializes the preconditioner matrices (L and R in the paper).
         """
-        state[
-            "GG"
-        ] = []  # Will hold all the preconditioner matrices (L and R in the paper).
+        state["GG"] = (
+            []
+        )  # Will hold all the preconditioner matrices (L and R in the paper).
         if grad.dim() == 1:
             if not precondition_1d or grad.shape[0] > max_precond_dim:
                 state["GG"].append([])
             else:
                 state["GG"].append(
-                    torch.zeros(grad.shape[0], grad.shape[0], device=grad.device)
+                    torch.zeros(
+                        grad.shape[0],
+                        grad.shape[0],
+                        device=grad.device,
+                        dtype=grad.dtype,
+                    )
                 )
         else:
             if merge_dims:
@@ -329,7 +334,14 @@ class SOAP(optim.Optimizer):
                 if sh > max_precond_dim:
                     state["GG"].append([])
                 else:
-                    state["GG"].append(torch.zeros(sh, sh, device=grad.device))
+                    state["GG"].append(
+                        torch.zeros(
+                            sh,
+                            sh,
+                            device=grad.device,
+                            dtype=grad.dtype,
+                        )
+                    )
 
         state["Q"] = None  # Will hold all the eigenbases of the preconditioner.
         state["precondition_frequency"] = precondition_frequency
