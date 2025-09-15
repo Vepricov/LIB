@@ -65,7 +65,23 @@ def init_precond(g, L, R, init="kron", max_precond_dim=10000):
     return L, R
 
 
-def proj_split(L, R, g, beta=0, init="kron", max_precond_dim=10000):
+def proj_split(L, R, g, beta=0, init="kron", max_precond_dim=10000, eps=1e-3):
+    if L == [] or R == []:
+        if L != []:
+            if torch.norm(L) == 0:
+                L = torch.eye(L.shape[0], device=g.device, dtype=g.dtype)
+                L /= torch.norm(L) * eps
+            L_new = L + g @ g.T
+        else:
+            L_new = []
+        if R != []:
+            if torch.norm(R) == 0:
+                R = torch.eye(R.shape[0], device=g.device, dtype=g.dtype)
+                R /= torch.norm(R) * eps
+            R_new = R + g.T @ g
+        else:
+            R_new = []
+        return L_new, R_new
     if (L != [] and torch.norm(L) == 0) or (R != [] and torch.norm(R) == 0):
         L, R = init_precond(g, L, R, init, max_precond_dim)
     if beta is not None:
@@ -509,9 +525,9 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
         """
         Initializes the preconditioner matrices (L and R in the paper).
         """
-        state["GG"] = (
-            []
-        )  # Will hold all the preconditioner matrices (L and R in the paper).
+        state[
+            "GG"
+        ] = []  # Will hold all the preconditioner matrices (L and R in the paper).
         if grad.dim() == 1:
             if not precondition_1d or grad.shape[0] > max_precond_dim:
                 state["GG"].append([])
@@ -525,6 +541,9 @@ class MIKOLA_DROP_SOAP(torch.optim.Optimizer):
 
             for sh in grad.shape:
                 if sh > max_precond_dim:
+                    print(
+                        f"Skipping dimension {sh} of grad's shape {grad.shape} due to max_precond_dim limit"
+                    )
                     state["GG"].append([])
                 else:
                     state["GG"].append(torch.zeros(sh, sh, device=grad.device))

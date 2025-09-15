@@ -115,6 +115,8 @@ class Finetuner:
             attn_implementation=attn_implementation,
         )
 
+        print(self.model)
+
         # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.args.model,

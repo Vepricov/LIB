@@ -120,6 +120,7 @@ def parse_args():
         )
         parser.add_argument(
             "--max_precond_dim",
+            "--max_precondition_dim",
             default=10_000,
             type=int,
             help="maximum dimension of preconditioner for SOAP-like algorithms",

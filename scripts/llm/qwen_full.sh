@@ -4,22 +4,25 @@ clear
 # LLM Qwen LoRA Fine-tuning Script
 # Available datasets: gsm8k, boolq, mathqa, hella_swag, arc_challenge
 
-export CUDA_VISIBLE_DEVICES=2
-export TOKENIZERS_PARALLELISM=false
+export CUDA_VISIBLE_DEVICES=3
 
 # Default dataset (can be overridden)
-DATASET_NAME=${1:-gsm8k}
+DATASET_NAME=${1:-hella_swag}
 
 echo "Running LLM ${DATASET_NAME} with Qwen + LoRA"
 
 #for lr in 1e-6 5e-6 1e-5 5e-5 1e-4 5e-4 1e-3 5e-3
-for lr in 1e-6 5e-6 1e-5 5e-5 1e-4 5e-4 1e-3 5e-3
+for lr in 5e-6 1e-5
 do
     python ./src/run_experiment.py \
         --dataset ${DATASET_NAME} \
-        --model Qwen/Qwen2-7B \
+        --model Qwen/Qwen3-4B \
         --padding_side left \
         --optimizer mikola_drop_soap \
+        --init kron \
+        --update_freq 10 \
+        --adam_rank_one \
+        --max_precondition_dim 20000 \
         --batch_size 8 \
         --gradient_accumulation_steps 1 \
         --lr $lr \

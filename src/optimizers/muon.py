@@ -186,7 +186,6 @@ class Muon(torch.optim.Optimizer):
             weight_decay = group["adamw_wd"]
 
             for p in params:
-                print("$$$$$")
                 g = p.grad
                 assert g is not None
                 state = self.state[p]

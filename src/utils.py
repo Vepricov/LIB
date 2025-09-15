@@ -92,7 +92,7 @@ def get_run_name(args, parser, tuning=False):
         "ns_steps",
         "report_fisher_diff",
         "n_epoches_train",
-        "n_samples"
+        "n_samples",
     ]
     # Get the default values
     defaults = vars(parser.parse_args([]))
@@ -222,7 +222,7 @@ def get_peft_arguments(args):
             "gate_proj",
             "up_proj",
             "down_proj",
-            "lm_head",
+            # "lm_head",
         ]
     elif "qwen" in args.model.lower():
         peft_args.target_modules = [
@@ -230,10 +230,10 @@ def get_peft_arguments(args):
             "k_proj",
             "v_proj",
             "o_proj",
-            "gate_proj",
-            "up_proj",
+            # "gate_proj",
+            # "up_proj",
             "down_proj",
-            "lm_head",
+            # "lm_head",
         ]
     elif "distilbert-base" in args.model.lower():
         peft_args.target_modules = [

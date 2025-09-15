@@ -312,9 +312,9 @@ class SOAP(optim.Optimizer):
         """
         Initializes the preconditioner matrices (L and R in the paper).
         """
-        state["GG"] = (
-            []
-        )  # Will hold all the preconditioner matrices (L and R in the paper).
+        state[
+            "GG"
+        ] = []  # Will hold all the preconditioner matrices (L and R in the paper).
         if grad.dim() == 1:
             if not precondition_1d or grad.shape[0] > max_precond_dim:
                 state["GG"].append([])
@@ -415,6 +415,7 @@ class SOAP(optim.Optimizer):
                             dims=[[*chain(range(idx), range(idx + 1, len(grad.shape)))]]
                             * 2,
                         )
+                        print(state["GG"][idx].dtype, outer_product.dtype)
                         state["GG"][idx].lerp_(outer_product, 1 - state["shampoo_beta"])
 
         if state["Q"] is None:
