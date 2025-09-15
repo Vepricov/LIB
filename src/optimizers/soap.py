@@ -76,7 +76,6 @@ class SOAP(optim.Optimizer):
             "normalize_grads": normalize_grads,
             "correct_bias": correct_bias,
         }
-        print("lr", lr, flush=True)
         super().__init__(params, defaults)
         self._data_format = data_format
         self.report_fisher_diff = report_fisher_diff and wandb.run
@@ -415,7 +414,6 @@ class SOAP(optim.Optimizer):
                             dims=[[*chain(range(idx), range(idx + 1, len(grad.shape)))]]
                             * 2,
                         )
-                        print(state["GG"][idx].dtype, outer_product.dtype)
                         state["GG"][idx].lerp_(outer_product, 1 - state["shampoo_beta"])
 
         if state["Q"] is None:
