@@ -65,7 +65,7 @@ class TAIA(torch.optim.Optimizer):
         adamw_betas=(0.95, 0.95),
         adamw_eps=1e-8,
         adamw_wd=0,
-        lmo="frobenious",
+        lmo=None,
         precondition_type="norm",
     ):
         defaults = dict(
@@ -142,6 +142,8 @@ class TAIA(torch.optim.Optimizer):
                         state["step"] = 0
                     if "momentum_buffer" not in state:
                         state["momentum_buffer"] = torch.zeros_like(g)
+                    if "exp_avg" not in state:
+                        state["exp_avg"] = torch.zeros_like(g)
                     if "prec_L" not in state and group["precondition_type"] == "fisher":
                         # state["prec_L"] = shampoo_eps * torch.eye(g.size(0), device=g.device)
                         # state["prec_R"] = shampoo_eps * torch.eye(g.size(1), device=g.device)
@@ -159,6 +161,12 @@ class TAIA(torch.optim.Optimizer):
 
                     buf = state["momentum_buffer"]
                     buf.mul_(momentum).add_(g)
+
+                    # поменял вот здесь
+                    exp_avg = state["exp_avg"]
+                    exp_avg.mul_(momentum).add_(g, alpha=1.0)
+                    g = exp_avg
+
                     state["step"] += 1
                     if group["precondition_type"] == "fisher":
                         H_L = state["prec_L"].clone()
