@@ -159,15 +159,13 @@ class TAIA(torch.optim.Optimizer):
                     ):
                         state["exp_avg_sq"] = torch.zeros_like(g)
 
-                    buf = state["momentum_buffer"]
-                    buf.mul_(momentum).add_(g)
-
-                    # поменял вот здесь
+                    # First momentum with bias correction
                     exp_avg = state["exp_avg"]
-                    exp_avg.mul_(momentum).add_(g, alpha=1.0)
-                    g = exp_avg
+                    exp_avg.mul_(momentum).add_(g, alpha=1.0 - momentum)
 
                     state["step"] += 1
+                    bias_correction1 = 1.0 - momentum ** (state["step"])
+                    exp_avg_corrected = exp_avg / bias_correction1
                     if group["precondition_type"] == "fisher":
                         H_L = state["prec_L"].clone()
                         H_R = state["prec_R"].clone()
@@ -186,15 +184,24 @@ class TAIA(torch.optim.Optimizer):
                             .add_(group["adamw_eps"])
                             .div_(bias_correction2**0.5)
                         )
-                        g /= D.sqrt()
-
-                    if group["nesterov"]:
-                        g = g.add(buf, alpha=momentum)
+                        exp_avg_corrected /= D.sqrt()
+                    elif group["precondition_type"] == "adam_sania":
+                        beta2 = group["adamw_betas"][1]
+                        state["exp_avg_sq"].mul_(beta2).addcmul_(
+                            g, g, value=1.0 - beta2
+                        )
+                        bias_correction2 = 1.0 - beta2 ** state["step"]
+                        D = (
+                            state["exp_avg_sq"]
+                            .add_(group["adamw_eps"])
+                            .div_(bias_correction2)
+                        )  # remove square root
+                        exp_avg_corrected /= D.sqrt()
 
                     if group["precondition_type"] == "norm":
                         L = g.norm(dim=0, keepdim=True)
                         L = torch.where(L == 0, 1e-8, L)
-                        g /= L
+                        exp_avg_corrected /= L
                     elif group["precondition_type"] == "fisher":
                         # L = torch.linalg.cholesky(H_L, upper=True)
                         # R = torch.linalg.cholesky(H_R, upper=False)
@@ -208,22 +215,27 @@ class TAIA(torch.optim.Optimizer):
                             sigma_R[i] = 1.0 / sigma_R[i] if sigma_R[i] > 1e-10 else 0
                         L_inv = U_L @ torch.diag(sigma_L**1 / 8)
                         R_inv = torch.diag(sigma_R**1 / 8) @ U_R.T
-                        g = L_inv.T @ g @ R_inv.T
+                        exp_avg_corrected = L_inv.T @ exp_avg_corrected @ R_inv.T
 
                     if group["lmo"] == "spectral":
-                        g = zeropower_via_newtonschulz5(
-                            g, steps=group["ns_steps"], eps=group["adamw_eps"]
+                        exp_avg_corrected = zeropower_via_newtonschulz5(
+                            exp_avg_corrected,
+                            steps=group["ns_steps"],
+                            eps=group["adamw_eps"],
                         )
-                        g *= max(1, g.size(0) / g.size(1)) ** 0.5
+                        exp_avg_corrected *= max(1, g.size(0) / g.size(1)) ** 0.5
 
                     if group["precondition_type"] == "norm":
-                        g /= L
+                        exp_avg_corrected /= L
                     elif group["precondition_type"] == "fisher":
-                        g = L_inv @ g @ R_inv
-                    elif group["precondition_type"] == "adam":
-                        g /= D.sqrt()
+                        exp_avg_corrected = L_inv @ exp_avg_corrected @ R_inv
+                    elif group["precondition_type"] in ["adam", "adam_sania"]:
+                        exp_avg_corrected /= D.sqrt()
+                        # g /= D.sqrt()
 
-                    updates_flat[curr_idx : curr_idx + p.numel()] = g.flatten()
+                    updates_flat[curr_idx : curr_idx + p.numel()] = (
+                        exp_avg_corrected.flatten()
+                    )
                 curr_idx += p.numel()
 
             # sync updates across devices. we are not memory-constrained so can do this simple deserialization
@@ -233,13 +245,13 @@ class TAIA(torch.optim.Optimizer):
             # deserialize and apply updates
             curr_idx = 0
             for p in params:
-                g = (
+                exp_avg_corrected = (
                     updates_flat[curr_idx : curr_idx + p.numel()]
                     .view_as(p.data)
                     .type_as(p.data)
                 )
 
-                p.data.add_(g, alpha=-lr)
+                p.data.add_(exp_avg_corrected, alpha=-lr)
 
                 curr_idx += p.numel()
 
