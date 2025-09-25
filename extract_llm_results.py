@@ -113,7 +113,7 @@ def create_bar_chart(results):
     means = np.array(means)
     stds = np.array(stds)
     
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(10, 4))
     
     x = np.arange(len(datasets))
     width = 0.25

@@ -1,7 +1,8 @@
 clear
 
-datasets=(cola mnli mrpc qnli qqp rte sst2 stsb wnli)
-lrs=(2e-4 1e-4 5e-5 3e-5)
+# datasets=(cola mnli mrpc qnli qqp rte sst2 stsb)
+datasets=(cola rte)
+lrs=(3e-4 1e-3 2e-5)
 
 for dataset in "${datasets[@]}"; do
   for lr in "${lrs[@]}"; do
