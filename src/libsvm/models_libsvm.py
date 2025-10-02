@@ -49,7 +49,7 @@ class LinearClassifier(nn.Module):
         weight_init="uniform",
         dtype=None,
         bias=True,
-        X=None
+        X=None,
     ):
         super(LinearClassifier, self).__init__()
         self.X = X
@@ -220,9 +220,9 @@ class SoftmaxLinearModel(nn.Module):
             xx_outer = torch.outer(x_i, x_i).to(device)  # (input_dim, input_dim)
 
             # Compute Sigma(p_i) = diag(p_i) - p_i p_i^T
-            sigma_p = torch.diag(p_i) - torch.outer(
-                p_i, p_i
-            ).to(device)  # (output_dim, output_dim)
+            sigma_p = torch.diag(p_i) - torch.outer(p_i, p_i).to(
+                device
+            )  # (output_dim, output_dim)
 
             # Kronecker product
             hessian_i = torch.kron(xx_outer, sigma_p)  # (mn, mn)

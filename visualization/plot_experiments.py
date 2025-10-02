@@ -303,8 +303,8 @@ def main():
     parser = argparse.ArgumentParser(description='Visualize experiments for A* paper')
     parser.add_argument('--experiment', choices=['hess', 'abl_llama'], required=True,
                        help='Type of experiment to visualize')
-    parser.add_argument('--entity', help='W&B entity name', default="andrey")
-    parser.add_argument('--project', help='W&B project name', default="MIKOLA_DROP_SOAP")
+    parser.add_argument('--entity', help='W&B entity name', default="????")
+    parser.add_argument('--project', help='W&B project name', default="????")
     parser.add_argument('--output-dir', default='./plots', help='Output directory for plots')
     parser.add_argument('--output-name', help='Custom output filename (without extension)')
 

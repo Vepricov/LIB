@@ -5,9 +5,7 @@ import sys
 sys.path.append("src/optimizers")
 import soap
 import muon
-import mikola_drop_soap
-import mikola_drop_soap_OLD
-import soap_NEW
+import dykaf
 
 
 def get_optimizer(args, model):
@@ -32,20 +30,8 @@ def get_optimizer(args, model):
             max_precond_dim=args.max_precond_dim,
             report_fisher_diff=args.report_fisher_diff,
         )
-    elif args.optimizer == "soap_new":
-        optimizer = soap_NEW.SOAP(
-            params=trainable_params,
-            lr=args.lr,
-            betas=(args.beta1, args.beta2),
-            shampoo_beta=args.shampoo_beta,
-            eps=args.eps,
-            weight_decay=args.weight_decay,
-            precondition_frequency=args.update_freq,
-            max_precond_dim=args.max_precond_dim,
-            report_fisher_diff=args.report_fisher_diff,
-        )
-    elif args.optimizer == "mikola_drop_soap":
-        optimizer = mikola_drop_soap.MIKOLA_DROP_SOAP(
+    elif args.optimizer == "dykaf":
+        optimizer = dykaf.DyKAF(
             params=trainable_params,
             lr=args.lr,
             betas=(args.beta1, args.beta2),
@@ -57,19 +43,6 @@ def get_optimizer(args, model):
             init=args.init,
             report_fisher_diff=args.report_fisher_diff,
             adam_rank_one=args.adam_rank_one,
-        )
-    elif args.optimizer == "mikola_drop_soap_old":
-        optimizer = mikola_drop_soap_OLD.MIKOLA_DROP_SOAP(
-            params=trainable_params,
-            lr=args.lr,
-            betas=(args.beta1, args.beta2),
-            shampoo_beta=args.shampoo_beta,
-            eps=args.eps,
-            weight_decay=args.weight_decay,
-            precondition_frequency=args.update_freq,
-            max_precond_dim=args.max_precond_dim,
-            init=args.init,
-            report_fisher_diff=args.report_fisher_diff,
         )
     elif args.optimizer == "sgd":
         optimizer = optim.SGD(

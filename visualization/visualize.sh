@@ -17,16 +17,16 @@ python plot_experiments.py \
 
 echo
 
-# echo "2. Generating ABL Llama experiment visualization..."
-# python plot_experiments.py \
-#     --experiment abl_llama \
-#     --output-dir ./plots \
-#     --output-name llama_adam1_rank_one_ablation
+echo "2. Generating ABL Llama experiment visualization..."
+python plot_experiments.py \
+    --experiment abl_llama \
+    --output-dir ./plots \
+    --output-name llama_adam1_rank_one_ablation
 
-# echo
+echo
 
-# echo "=== Visualization complete! ==="
-# echo "Check the ./plots directory for generated images:"
-# echo "- hess_soap_vs_dykaf.png"
-# echo "- llama_adam1_rank_one_ablation.png"
-# echo
+echo "=== Visualization complete! ==="
+echo "Check the ./plots directory for generated images:"
+echo "- hess_soap_vs_dykaf.png"
+echo "- llama_adam1_rank_one_ablation.png"
+echo
