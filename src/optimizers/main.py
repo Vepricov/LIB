@@ -5,6 +5,7 @@ import sys
 sys.path.append("src/optimizers")
 import soap, muon
 import taia
+import lora_rite
 
 
 def get_optimizer(args, model):
@@ -57,6 +58,14 @@ def get_optimizer(args, model):
             adamw_wd=args.weight_decay,
             lmo=args.lmo,
             precondition_type=args.precondition_type,
+        )
+    elif args.optimizer == "lora_rite":
+        optimizer = lora_rite.LoRARite(
+            params=trainable_params,
+            betas=(args.beta1, args.beta2),
+            eps=args.eps,
+            lr=args.lr,
+            weight_decay=args.weight_decay,
         )
     else:
         raise NotImplementedError(f"Wrong optimizer name {args.optimizer}")
