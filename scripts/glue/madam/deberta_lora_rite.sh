@@ -1,7 +1,7 @@
 clear
 
-# datasets=(cola mnli mrpc qnli qqp rte sst2 stsb)
-datasets=(cola rte)
+datasets=(cola mnli mrpc qnli qqp rte sst2 stsb)
+# datasets=(cola rte)
 lrs=(3e-4 1e-3 2e-5)
 
 for dataset in "${datasets[@]}"; do
@@ -9,7 +9,7 @@ for dataset in "${datasets[@]}"; do
     CUDA_VISIBLE_DEVICES=0 python ./src/run_experiment.py \
       --dataset $dataset \
       --model distilbert/distilbert-base-uncased \
-      --optimizer adamw \
+      --optimizer lora_rite \
       --batch_size 16 \
       --gradient_accumulation_steps 2 \
       --lr $lr \
@@ -25,4 +25,4 @@ for dataset in "${datasets[@]}"; do
       --lora_dropout 0.05 \
       --wandb
   done
-  done
+done

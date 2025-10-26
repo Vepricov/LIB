@@ -21,11 +21,8 @@ for dataset in "${datasets[@]}"; do
             --max_train_steps 10000 \
             --eval_strategy epoch \
             --save_strategy no \
-            --ft_strategy LoRA \
+            --ft_strategy Full \
             --dtype bfloat16 \
-            --lora_r 4 \
-            --lora_alpha 32 \
-            --lora_dropout 0.05 \
             --wandb
     done
 done
