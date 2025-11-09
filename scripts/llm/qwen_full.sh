@@ -7,12 +7,12 @@ clear
 export CUDA_VISIBLE_DEVICES=3
 
 # Default dataset (can be overridden)
-DATASET_NAME=${1:-hella_swag}
+DATASET_NAME=${1:-gsm8k}
 
 echo "Running LLM ${DATASET_NAME} with Qwen + LoRA"
 
 #for lr in 1e-6 5e-6 1e-5 5e-5 1e-4 5e-4 1e-3 5e-3
-for lr in 5e-6 1e-5
+for lr in 9e-6 2e-5 3e-5
 do
     python ./src/run_experiment.py \
         --dataset ${DATASET_NAME} \
@@ -22,7 +22,6 @@ do
         --init kron \
         --update_freq 10 \
         --adam_rank_one \
-        --max_precondition_dim 20000 \
         --batch_size 8 \
         --gradient_accumulation_steps 1 \
         --lr $lr \

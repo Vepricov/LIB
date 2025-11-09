@@ -232,7 +232,7 @@ def get_peft_arguments(args):
             "o_proj",
             # "gate_proj",
             # "up_proj",
-            "down_proj",
+            # "down_proj",
             # "lm_head",
         ]
     elif "distilbert-base" in args.model.lower():
