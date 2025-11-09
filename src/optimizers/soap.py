@@ -231,7 +231,7 @@ class SOAP(optim.Optimizer):
                         torch.linalg.norm(state["H"] - H_approx) ** 2
                     )
                     self.reported_diff["diag_diff"] += (
-                        torch.linalg.norm(torch.diag(torch.diag(H_rot)) - H_rot) ** 2
+                        torch.linalg.norm(torch.diag(torch.diag(H_rot)) - H_rot) ** 2 / torch.linalg.norm(H_rot)**2
                     )
                     self.reported_diff["fisher_norm_{}".format(num)] = torch.norm(
                         state["H"]
@@ -274,7 +274,12 @@ class SOAP(optim.Optimizer):
                 if group["normalize_grads"]:
                     norm_grad = norm_grad / (1e-30 + torch.mean(norm_grad**2) ** 0.5)
 
-                p.add_(norm_grad, alpha=-step_size)
+                if self.report_fisher_diff:
+                    ##### DO SGD STEP FOR ABLATIN & FISHER MATRIX COMPARISON
+                    p.add_(norm_grad, alpha=-step_size)
+                else:
+                    ##### DO OUR DyKAF step
+                    p.add_(norm_grad, alpha=-step_size)
 
                 # From AdamW code: Just adding the square of the weights to the loss function is *not*
                 # the correct way of using L2 regularization/weight decay with Adam,

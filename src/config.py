@@ -71,7 +71,7 @@ def parse_args():
     parser.add_argument(
         "--run_prefix", default=None, help="Run prefix for the experiment run name"
     )
-    parser.add_argument("--wandb_project", default="MIKOLA_DROP_SOAP")
+    parser.add_argument("--wandb_project", default="dykaf")
     parser.add_argument(
         "--verbose",
         action="store_true",
@@ -109,8 +109,7 @@ def parse_args():
     if args1.optimizer in [
         "soap",
         "soap_new",
-        "mikola_drop_soap",
-        "mikola_drop_soap_old",
+        "dykaf",
     ]:
         parser.add_argument(
             "--shampoo_beta",
@@ -135,8 +134,7 @@ def parse_args():
         "soap",
         "soap_new",
         "diag-hvp",
-        "mikola_drop_soap",
-        "mikola_drop_soap_old",
+        "dykaf",
     ]:
         parser.add_argument(
             "--update_freq",
@@ -151,7 +149,7 @@ def parse_args():
         parser.add_argument(
             "--adamw_lr", default=None, type=float, help="lr for adam in "
         )
-    if args1.optimizer in ["mikola_drop_soap", "mikola_drop_soap_old"]:
+    if args1.optimizer in ["dykaf"]:
         parser.add_argument(
             "--init",
             default="eps",
