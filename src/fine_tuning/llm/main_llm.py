@@ -10,7 +10,11 @@ from utils_llm import DatasetRegistry
 
 import warnings
 
-DATASETS = ["mathqa", "coin_flip"]
+DATASETS = [
+    "aqua", "gsm8k", "commonsensqa", "boolq", "addsub", "multiarith",
+    "singleeq", "strategyqa", "svamp", "bigbench_date", "object_tracking",
+    "coin_flip", "last_letters", "mathqa",  "hella_swag", "arc_challenge",
+]
 
 warnings.filterwarnings("ignore")
 
@@ -188,6 +192,21 @@ class Finetuner:
             eval_mode=False,
         )
 
+    def prepare_evaluation_dataset_for_training(self):
+        """Prepare evaluation dataset for training"""
+        if self.eval_dataset is None:
+            logger.warning("No eval dataset for training dataset available")
+            return None
+
+        logger.info("Preparing evaluation dataset for training...")
+        return self.builder.preprocess_dataset(
+            self.tokenizer,
+            self.args.max_seq_length,
+            self.args.seed,
+            self.eval_dataset,
+            eval_mode=False,
+        )
+
     def prepare_evaluation_dataset(self):
         """Prepare dataset for evaluation"""
         if self.eval_dataset is None:
@@ -200,11 +219,6 @@ class Finetuner:
         )
         return dataset
 
-    def get_optimizer(self):
-        """Get optimizer for training"""
-        optimizer = get_optimizer(self.args, self.model)
-        return optimizer
-
     def train(self):
         """Execute training process"""
         if self.args.do_not_train:
@@ -212,12 +226,6 @@ class Finetuner:
             return
 
         logger.info(f"Starting training for dataset: {self.args.dataset}")
-
-        # Prepare training dataset
-        train_dataset = self.prepare_training_dataset()
-        if train_dataset is None:
-            logger.error("No training data available")
-            return
 
         # Setup trainer
         training_args = TrainingArguments(
@@ -238,23 +246,79 @@ class Finetuner:
             num_train_epochs=self.args.n_epoches_train,
             max_steps=self.args.max_steps_train,
             logging_steps=self.args.logging_steps,
-            eval_strategy="no",
+            eval_strategy=self.args.eval_strategy,
+            save_strategy=self.args.eval_strategy,
             eval_steps=self.args.eval_steps,
-            save_strategy=self.args.save_strategy,
-            save_steps=self.args.save_steps,
+            save_steps=self.args.eval_steps,
             bf16=(self.args.dtype == "bfloat16"),
             fp16=(self.args.dtype == "float16"),
             logging_dir=f"./src/fine_tuning/llm/{self.args.results_path}/{self.args.run_name}",
             output_dir=f"./src/fine_tuning/llm/{self.args.results_path}/{self.args.run_name}",
             run_name=self.args.run_name,
             report_to=["wandb"] if self.args.wandb else ["none"],
+            load_best_model_at_end=self.args.eval_strategy != "no",
+            metric_for_best_model=self.args.metric_for_best_model,
+            greater_is_better=self.args.metric_for_best_model not in ["loss"],
         )
 
-        optimizer = self.get_optimizer()
+        # Prepare datasets
+        if not self.args.do_not_train:
+            train_dataset = self.prepare_training_dataset()
+            if train_dataset is None:
+                logger.error("No training data available, so either skip training (--do_not_train) or provide training data")
+                return
 
+        if not self.args.do_not_eval:
+            eval_dataset = self.prepare_evaluation_dataset_for_training()
+            if eval_dataset is None:
+                logger.error("No evaluation data available, so either skip evaluation (--do_not_eval) or provide evaluation data")
+                return
+
+
+        if self.args.ft_strategy in ["WeightLoRA", "FatLoRA"]:
+            if self.args.ft_strategy == "WeightLoRA":
+                max_steps = self.args.mfs
+                optim_name = "weight_adamw"
+            else:
+                max_steps = self.args.mfs * self.args.fat_step
+                optim_name = "fat_adamw"
+            training_args_warmup = TrainingArguments(
+                do_eval=False,
+                per_device_train_batch_size=self.args.batch_size,
+                gradient_accumulation_steps=self.args.grad_acc_steps,
+                learning_rate=self.args.lr,
+                lr_scheduler_type="constant",
+                max_steps=max_steps,
+                logging_steps=1,
+                bf16=(self.args.dtype == "bfloat16"),
+                fp16=(self.args.dtype == "float16"),
+                logging_dir=f"./src/fine_tuning/llm/{self.args.results_path}/{self.args.run_name}_warmup",
+                output_dir=f"./src/fine_tuning/llm/{self.args.results_path}/{self.args.run_name}_warmup",
+                run_name=f"warmup_{self.args.run_name}",
+                report_to=["none"],
+            )
+
+            optimizer = get_optimizer(self.args, self.model, name=optim_name)
+            trainer_warmup = Trainer(
+                model=self.model,
+                train_dataset=train_dataset,
+                args=training_args_warmup,
+                data_collator=DataCollatorForLanguageModeling(self.tokenizer, mlm=False),
+                optimizers=[optimizer, None],
+            )
+            trainer_warmup.train()
+            remain_adapters = utils.count_remain_adapters(self.args, self.model)
+            print(f"After {self.args.ft_strategy} lora warmup")
+            for key, value in remain_adapters.items():
+                print(f"{key}: {value}")
+            _ = utils.print_trainable_params(self.model, verbose=True)
+
+        # Prepare optimizer
+        optimizer = get_optimizer(self.args, self.model) # we used weight adamw in the warmup
         self.trainer = Trainer(
             model=self.model,
             train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
             args=training_args,
             data_collator=DataCollatorForLanguageModeling(self.tokenizer, mlm=False),
             optimizers=[optimizer, None],  # Scheduler will be added in the hf trainer
@@ -269,12 +333,12 @@ class Finetuner:
         # Train the model
         train_result = self.trainer.train()
         metrics = train_result.metrics
-        if self.args.ft_strategy == "WeightLoRA":
-            remain_adapters = utils.count_remain_adapters(self.args, self.model)
-        metrics = metrics | remain_adapters
+        if self.args.ft_strategy in ["WeightLoRA", "FatLoRA"]:
+            # remain_adapters = utils.count_remain_adapters(self.args, self.model)
+            metrics = metrics | remain_adapters
         self.trainer.log_metrics("train", metrics)
         self.trainer.save_metrics("train", metrics)
-        logger.info(f"Training completed. Metrics: {metrics}")
+        # logger.info(f"Training completed. Metrics: {metrics}")
 
     def evaluate(self):
         """Execute evaluation process"""
@@ -284,8 +348,9 @@ class Finetuner:
 
         logger.info(f"Starting evaluation for dataset: {self.args.dataset}")
 
-        # Prepare evaluation dataset
         eval_dataset = self.prepare_evaluation_dataset()
+
+        # Prepare evaluation dataset
         if eval_dataset is None:
             logger.error("No evaluation data available")
             return 0, 0
@@ -308,7 +373,7 @@ class Finetuner:
                 # Generate prediction
                 predicted_response = generator(
                     item["text"],
-                    max_new_tokens=len(item["raw_y"]) + 2,
+                    max_new_tokens=len(self.tokenizer.tokenize(item["raw_y"])) + 1,
                     num_return_sequences=1,
                 )[0]["generated_text"]
                 predicted_response = predicted_response.replace(" ", "").replace(

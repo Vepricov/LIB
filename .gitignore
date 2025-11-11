@@ -16,6 +16,7 @@ wandb/
 tuned_params/
 src/fine_tuning_new/
 optim_lib/
+optim_venv/
 loras.md
 
 # Compiled files

@@ -43,7 +43,7 @@ def print_trainable_params(model, verbose=True):
 
 
 def count_atapters(model, peft_type):
-    if peft_type in ["LoRA", "ADALoRA", "DoRA", "rsLoRA", "WeightLoRA", "RandLoRA"]:
+    if peft_type in ["LoRA", "ADALoRA", "DoRA", "rsLoRA", "WeightLoRA", "RandLoRA", "FatLoRA"]:
         adapter_name = "lora_A"
     elif peft_type == "LoKR":
         adapter_name = "lokr_w1"
@@ -67,9 +67,7 @@ def count_atapters(model, peft_type):
 
 
 def get_run_name(args, parser, tuning=False):
-    key_args = ["optimizer", "model", "dataset"]
-    if hasattr(args, "ft_strategy"):
-        key_args.append("ft_strategy")
+    key_args = ["ft_strategy", "model", "dataset"]
     ignore_args = [
         "verbose",
         "seed",
@@ -127,16 +125,16 @@ def get_run_name(args, parser, tuning=False):
                 if type(value) == bool:
                     non_default_parts.append(f"{key}")
                 else:
-                    non_default_parts.append(f"{key}-{value}")
+                    non_default_parts.append(f"{key}={value}")
 
-    non_default_string = "__".join(non_default_parts)
+    non_default_string = "|".join(non_default_parts)
 
     if args.run_prefix is not None and not tuning:
         prefix = args.run_prefix + "__" + prefix
 
     # Combine prefix and non-default string
     if non_default_string:
-        return f"{prefix}__{non_default_string}"
+        return f"{prefix}||{non_default_string}"
     else:
         return prefix
 
@@ -180,7 +178,7 @@ def get_peft_arguments(args):
             lora_dropout=args.lora_dropout,
             use_rslora=True,
         )
-    elif args.ft_strategy == "WeightLoRA":
+    elif args.ft_strategy in ["WeightLoRA", "FatLoRA"]:
         peft_args = peft.LoraConfig(
             r=args.lora_r,
             lora_alpha=args.lora_alpha,
@@ -212,7 +210,7 @@ def get_peft_arguments(args):
             "fc1",
             "fc2",
         ]
-    elif "Llama" in args.model.lower():
+    elif "llama" in args.model.lower():
         peft_args.target_modules = [
             "q_proj",
             "k_proj",
@@ -252,6 +250,27 @@ def get_peft_arguments(args):
         raise ValueError(f"Pass target_modules to your model {args.model}")
     return peft_args
 
+def get_layer_name(layer_name, model_name):
+    tmp = layer_name.split(".")
+    if "deberta" in model_name.lower():
+        if "attention.self" in layer_name:
+            name = f"attn_{tmp[8].split('_')[0]}"
+        elif "attention" in layer_name:
+            name = f"attn_{tmp[7]}"
+        else:
+            name = tmp[6]
+        load_name = f"{name}#{tmp[5]}"
+    elif "qwen" in model_name.lower():
+        if len(tmp) >= 7:
+            num, type, name = tmp[4], tmp[5], tmp[6]
+            load_name = f"{name}({type})#{num}"
+        elif "lm_head" in layer_name:
+            load_name = "lm_head"
+        else:
+            load_name = layer_name
+    else:
+        load_name = layer_name
+    return load_name
 
 def count_remain_adapters(args, model):
     i = 0
@@ -260,18 +279,13 @@ def count_remain_adapters(args, model):
         if "lora_weight" in name:
             if param.sum().item() > 0 and param.requires_grad:
                 i += 1
-                if "deberta" in args.model:
-                    tmp = name.split(".")
-                    if "attention.self" in name:
-                        layer_name = f"attn_{tmp[8].split('_')[0]}"
-                    elif "attention" in name:
-                        layer_name = f"attn_{tmp[7]}"
-                    else:
-                        layer_name = tmp[6]
-                    load_name = f"{layer_name}#{tmp[5]}"
-                else:
-                    load_name = name
-                remaining_adapters[f"active_adapter_{i}"] = load_name
+                remaining_adapters[f"active_adapter_{i}"] = get_layer_name(name, args.model)
+            param.requires_grad = False
+
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            if get_layer_name(name, args.model) not in remaining_adapters.values():
+                param.requires_grad = False
     return remaining_adapters
 
 

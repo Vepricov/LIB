@@ -4,49 +4,36 @@ clear
 # LLM Qwen LoRA Fine-tuning Script
 # Based on the unified fine-tuning architecture
 
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=3
 export TOKENIZERS_PARALLELISM=false
 
 # Default dataset (can be overridden)
-DATASET_NAME=${1:-mathqa}
+DATASET_NAME=${1:-hella_swag}
 
 echo "Running LLM ${DATASET_NAME} with Qwen + LoRA"
 
 python ./src/run_experiment.py \
     --dataset ${DATASET_NAME} \
-    --model Qwen/Qwen2-7B \
+    --model Qwen/Qwen3-8B \
     --padding_side left \
     --optimizer adamw \
-    --batch_size 1 \
+    --batch_size 4 \
     --eval_batch_size 1 \
-    --gradient_accumulation_steps 4 \
-    --lr 2e-4 \
+    --gradient_accumulation_steps 1 \
+    --lr 3e-4 \
     --weight_decay 1e-4 \
     --lr_scheduler_type linear \
     --warmup_ratio 0.1 \
-    --max_train_steps 10 \
+    --max_train_steps 5000 \
     --max_seq_length 512 \
     --logging_steps 1 \
     --ft_strategy LoRA \
     --lora_r 16 \
     --lora_alpha 32 \
     --lora_dropout 0.05 \
-    --quantization_bit 4 \
+    --quantization_bit 8 \
     --dtype bfloat16 \
-    --gradient_accumulation 4 \
+    --max_eval_samples 100 \
     --use_fast_tokenizer \
+    --eval_steps 250 \
     --wandb \
-
-# Alternative models:
-# Qwen/Qwen2-7B
-# meta-llama/Llama-2-7b-hf (requires HF_AUTH_TOKEN=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)
-# meta-llama/Llama-3.1-8B (requires HF_AUTH_TOKEN=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)
-
-# Available LLM datasets:
-# gsm8k aqua commonsensqa boolq addsub multiarith singleeq
-# strategyqa svamp bigbench_date object_tracking coin_flip last_letters mathqa
-#
-# Usage examples:
-# ./llm_qwen_lora.sh gsm8k
-# ./llm_qwen_lora.sh aqua
-# ./llm_qwen_lora.sh commonsensqa

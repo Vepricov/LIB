@@ -8,7 +8,7 @@ from libsvm.main_libsvm import DATASETS as LIBSVM_DATASETS
 from cv.config_cv import set_arguments_cv
 from cv.main_cv import DATASETS as CV_DATASETS
 
-from fine_tuning.config_ft import set_arguments_ft
+from fine_tuning.config_ft import set_arguments_ft, print_warnings_ft
 from fine_tuning.glue.main_glue import DATASETS as GLUE_DATASETS
 from fine_tuning.llm.main_llm import DATASETS as LLM_DATASETS
 
@@ -32,7 +32,7 @@ def parse_args():
     parser1.add_argument(
         "--optimizer",
         type=str,
-        default=None,
+        default="adamw",
         help="Name of the optimizer to use",
         choices=[
             "adamw",
@@ -41,9 +41,9 @@ def parse_args():
             "sgd",
             "adam-sania",
             "muon",
-            "weight_adamw",
         ],
     )
+    parser1.add_argument("--ft_strategy", type=str, default="LoRA", help="Finetuning strategy")
     args1, _ = parser1.parse_known_args()
     parser = parser1
 
@@ -94,10 +94,10 @@ def parse_args():
 
     ### Otimizer Arguments
     parser.add_argument(
-        "--lr", "--learning_rate", default=1e-4, type=float, help="learning rate"
+        "--lr", "--learning_rate", default=None, type=float, help="learning rate"
     )  # tuneed param
     parser.add_argument(
-        "--weight_decay", "-wd", default=1e-5, type=float, help="weight decay"
+        "--wd", "--weight_decay", default=0, type=float, help="weight decay"
     )  # tuneed param
     if args1.optimizer not in ["shampoo", "sgd"]:
         parser.add_argument("--beta1", default=0.9, type=float, help="First momentum")
@@ -132,9 +132,9 @@ def parse_args():
         parser.add_argument(
             "--adamw_lr", default=None, type=float, help="lr for adam in "
         )
-    if args1.optimizer in ["weight_adamw"]:
+    if args1.ft_strategy.lower() in ["fatlora", "weightlora"]:
         parser.add_argument(
-            "--k", "--K", default=10, type=int, help="Number of active LoRA adapters"
+            "--k", "--K", default=None, type=int, help="Number of active LoRA adapters"
         )
         parser.add_argument(
             "--lr_w",
@@ -144,10 +144,25 @@ def parse_args():
             help="learning rate for weight params",
         )
         parser.add_argument(
+            "--mfs",
             "--max_fat_steps",
             type=int,
-            default=3,
+            default=None,
             help="Projection steps of WeightLoRA",
+        )
+    if args1.ft_strategy.lower() in ["fatlora"]:
+        parser.add_argument(
+            "--fat_step",
+            type=int,
+            default=None,
+            help="Projection step of WeightLoRA+",
+        )
+        parser.add_argument(
+            "--extention",
+            type=str,
+            default="smart",
+            help="LoRA extention type for WeightLoRA+",
+            choices=["smart", "dummy", "restart"],
         )
 
     ### Problem Specific Arguments
@@ -209,5 +224,17 @@ def parse_args():
         line = "wandb and verbose set to False, so we set verbose to True"
         print(colored(line, "yellow"))
         args.verbose = True
+    if args.lr is None:
+        print(
+            colored(
+                "~~~~~~~~~~~~~~~ WARNING: LR SET TO DEFAULT 1e-4 ~~~~~~~~~~~~~~~",
+                "yellow",
+            )
+        )
+        line = "you did not specify a learning rate, so we set it to 1e-4"
+        print(colored(line, "yellow"))
+        args.lr = 1e-4
 
+    if args1.dataset.lower() in GLUE_DATASETS + LLM_DATASETS:
+        print_warnings_ft(args)
     return args, parser

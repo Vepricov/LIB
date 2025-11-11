@@ -1,3 +1,5 @@
+from termcolor import colored
+
 def set_arguments_ft(parser):
     ### Dataset Arguments
     parser.add_argument(
@@ -274,44 +276,37 @@ def set_arguments_ft(parser):
         help="Ratio of total training steps for warmup",
     )
     parser.add_argument(
-        "--eval_strategy",
-        "--evaluation_strategy",
-        default="epoch",
-        type=str,
-        help="Strategy to evaluate model",
-    )
-    parser.add_argument(
-        "--eval_steps",
-        default=None,
-        type=int,
-        help="Number of steps between evaluations (if eval_strategy==steps)",
-    )
-    parser.add_argument(
         "--logging_steps", default=1, type=int, help="How often print train loss"
     )
     parser.add_argument(
+        "--eval_strategy",
         "--save_strategy",
+        "--val_strategy",
+        "--evaluation_strategy",
         default="no",
         type=str,
         help="Strategy to save model checkpoints",
     )
     parser.add_argument(
+        "--eval_steps",
         "--save_steps",
-        default=500,
+        "--val_steps",
+        default=None,
         type=int,
         help="Number of steps between saves (if save_strategy==steps)",
     )
     parser.add_argument(
-        "--save_every",
-        default=500,
-        type=int,
-        help="Save model every N steps",
+        "--metric_for_best_model",
+        default="loss",
+        type=str,
+        choices=["loss", "accuracy", "f1", "precision", "recall"],
+        help="Metric to use for best model selection",
     )
 
     ### PEFT Arguments
-    parser.add_argument(
-        "--ft_strategy", default="LoRA", type=str, help="What PEFT strategy to use"
-    )
+    # parser.add_argument(
+    #     "--ft_strategy", default="LoRA", type=str, help="What PEFT strategy to use"
+    # )
     parser.add_argument(
         "--lora_r",
         default=8,
@@ -335,3 +330,15 @@ def set_arguments_ft(parser):
     parser.set_defaults(batch_size=8, n_epoches_train=3, eval_runs=1, dtype="float16")
 
     return parser
+
+def print_warnings_ft(args):
+    if args.eval_steps is not None and args.eval_strategy != "steps":
+        print(
+            colored(
+                "~~~~~~~~~~~~~~~ WARNING: EVAL STRATEGY SET TO STEPS ~~~~~~~~~~~~~~~",
+                "yellow",
+            )
+        )
+        line = f"you pass eval_steps={args.eval_steps} (!= None as in the defaults), so we set eval_strategy=steps"
+        print(colored(line, "yellow"))
+        args.eval_strategy = "steps"

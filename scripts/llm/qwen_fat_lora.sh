@@ -10,7 +10,7 @@ export TOKENIZERS_PARALLELISM=false
 # Default dataset (can be overridden)
 DATASET_NAME=${1:-hella_swag}
 
-echo "Running LLM ${DATASET_NAME} with Qwen + Weight LoRA"
+echo "Running LLM ${DATASET_NAME} with Qwen + Fat LoRA"
 
 python ./src/run_experiment.py \
     --dataset ${DATASET_NAME} \
@@ -26,7 +26,7 @@ python ./src/run_experiment.py \
     --max_train_steps 5000 \
     --max_seq_length 512 \
     --logging_steps 1 \
-    --ft_strategy WeightLoRA \
+    --ft_strategy FatLoRA \
     --lora_r 16 \
     --lora_alpha 32 \
     --lora_dropout 0.05 \
@@ -34,7 +34,7 @@ python ./src/run_experiment.py \
     --dtype bfloat16 \
     --use_fast_tokenizer \
     --max_eval_samples 100 \
-    --max_fat_steps 5 \
-    --K 85 \
+    --max_fat_steps 1 \
+    --fat_step 5 \
     --eval_steps 250 \
     --wandb \
