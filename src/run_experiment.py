@@ -10,8 +10,7 @@ from config import parse_args
 from utils import get_run_name
 from libsvm import main_libsvm
 from cv import main_cv
-from fine_tuning.glue import main_glue
-from fine_tuning.llm import main_llm
+from llm import main_llm
 
 if __name__ == "__main__":
     if torch.cuda.is_available():
@@ -22,11 +21,10 @@ if __name__ == "__main__":
         print("~~~~~~~~~~~~~~~ USING CPU ~~~~~~~~~~~~~~~")
     args, parser = parse_args()
     args.run_name = get_run_name(args, parser)
-    if args.dataset.lower() in main_libsvm.DATASETS:
+
+    if args.dataset.lower() in main_llm.DATASETS:
+        main_llm.main(args)
+    elif args.dataset.lower() in main_libsvm.DATASETS:
         main_libsvm.main(args, parser)
     elif args.dataset.lower() in main_cv.DATASETS:
         main_cv.main(args, parser)
-    elif args.dataset.lower() in main_glue.DATASETS:
-        main_glue.main(args)
-    elif args.dataset.lower() in main_llm.DATASETS:
-        main_llm.main(args)

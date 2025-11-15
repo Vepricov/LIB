@@ -8,15 +8,15 @@ from libsvm.main_libsvm import DATASETS as LIBSVM_DATASETS
 from cv.config_cv import set_arguments_cv
 from cv.main_cv import DATASETS as CV_DATASETS
 
-from fine_tuning.config_ft import set_arguments_ft
-from fine_tuning.glue.main_glue import DATASETS as GLUE_DATASETS
-from fine_tuning.llm.main_llm import DATASETS as LLM_DATASETS
+from llm.config_llm import set_arguments_llm
+from llm.main_llm import DATASETS as LLM_DATASETS
+from llm.problems_llm import SQUAD_DATASETS, NLG_DATASETS
 
 
 def parse_args():
     parser1 = ArgumentParser(description="Main Experiment")
 
-    ### Problem Arguments
+    ##### Problem Arguments #####
     parser1.add_argument(
         "--dataset",
         default=None,
@@ -55,7 +55,10 @@ def parse_args():
         help="Batch size for training",
     )
     parser.add_argument(
-        "--n_epoches_train", default=1, type=int, help="How many epochs to train"
+        "--n_epochs_train",
+        default=1,
+        type=int,
+        help="How many epochs to train"
     )
     parser.add_argument(
         "--eval_runs",
@@ -70,7 +73,7 @@ def parse_args():
         "--use_old_tune_params", action="store_true", help="Use already tuned params"
     )
 
-    ### Wandb Arguments
+    ##### Wandb Arguments #####
     parser.add_argument("--wandb", action="store_true", help="To use wandb")
     parser.add_argument(
         "--run_prefix", default=None, help="Run prefix for the experiment run name"
@@ -83,7 +86,7 @@ def parse_args():
     )
     parser.add_argument("--seed", default=18, type=int)
 
-    ### Saving Paths
+    ##### Saving Paths #####
     parser.add_argument(
         "--results_path",
         default="results_raw",
@@ -91,7 +94,7 @@ def parse_args():
     )
     parser.add_argument("--data_path", default="data", help="Path to save the datasets")
 
-    ### Otimizer Arguments
+    ##### Otimizer Arguments #####
     parser.add_argument(
         "--lr", "--learning rate", default=1e-4, type=float, help="learning rate"
     )  # tuneed param
@@ -132,30 +135,31 @@ def parse_args():
             "--adamw_lr", default=None, type=float, help="lr for adam in "
         )
 
-    ### Problem Specific Arguments
-    if args1.dataset.lower() in LIBSVM_DATASETS:
+    ##### Problem Specific Arguments #####
+    dataset = args1.dataset.lower()
+    if dataset in LLM_DATASETS:
+        problem = "llm"
+        parser = set_arguments_llm(parser, dataset in NLG_DATASETS, dataset in SQUAD_DATASETS)
+    elif dataset in LIBSVM_DATASETS:
         problem = "libsvm"
         parser = set_arguments_libsvm(parser)
-    elif args1.dataset.lower() in CV_DATASETS:
+    elif dataset in CV_DATASETS:
         problem = "cv"
         parser = set_arguments_cv(parser)
-    elif args1.dataset.lower() in GLUE_DATASETS + LLM_DATASETS:
-        problem = "fine_tuning"
-        parser = set_arguments_ft(parser)
     else:
         raise ValueError(
             f"""
             Unknown dataset: {args1.dataset}.
             Possible datasets are:
+            LLM: {LLM_DATASETS}
             LIBSVM: {LIBSVM_DATASETS}
             CV: {CV_DATASETS}
-            GLUE (FINE-TUNING): {GLUE_DATASETS}
-            CAUSAL LLM (FINE-TUNING): {LLM_DATASETS}"""
+            """
         )
 
-    args, unparced_args = parser.parse_known_args()
+    args, unparsed_args = parser.parse_known_args()
 
-    ### Warnings
+    ##### Warnings #####
     if args1.config_name is not None:
         path = f"./src/{problem}/configs/{args1.config_name}.json"
         if os.path.exists(path):
@@ -176,11 +180,11 @@ def parse_args():
             line = f"Path {path} does not exist. Using default configuration."
             print(colored(line, "red"))
 
-    if len(unparced_args) > 0:
-        print(colored("~~~~~~~~~~~~~~~ WARNING: UNPARCED ARGS ~~~~~~~~~~~~~~~", "red"))
+    if len(unparsed_args) > 0:
+        print(colored("~~~~~~~~~~~~~~~ WARNING: UNPARSED ARGS ~~~~~~~~~~~~~~~", "red"))
         line = "You pass unrecognized arguments:"
         print(colored(line, "red"), end="")
-        for arg in unparced_args:
+        for arg in unparsed_args:
             if "--" in arg:
                 print(colored(f"\n{arg}", "red"), end=" ")
             else:
