@@ -3,8 +3,7 @@ import sys
 
 sys.path.append("src/libsvm")
 sys.path.append("src/cv")
-sys.path.append("src/fine_tuning/glue")
-sys.path.append("src/fine_tuning/llm")
+sys.path.append("src/llm")
 
 from config import parse_args
 from utils import get_run_name

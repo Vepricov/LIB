@@ -211,10 +211,7 @@ def get_peft_arguments(args):
             "fc1",
             "fc2",
         ]
-<<<<<<< Updated upstream
-    elif "Llama" in args.model.lower():
-=======
-    elif "llama" in model_name:
+    elif "llama" in args.model.lower():
         peft_args.target_modules = [
             "q_proj",
             "k_proj",
@@ -225,8 +222,7 @@ def get_peft_arguments(args):
             "down_proj",
             "lm_head",
         ]
-    elif "qwen" in model_name:
->>>>>>> Stashed changes
+    elif "qwen" in args.model.lower():
         peft_args.target_modules = [
             "q_proj",
             "k_proj",
