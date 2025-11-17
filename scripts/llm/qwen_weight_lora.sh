@@ -8,7 +8,7 @@ export CUDA_VISIBLE_DEVICES=3
 export TOKENIZERS_PARALLELISM=false
 
 # Default dataset (can be overridden)
-DATASET_NAME=${1:-hella_swag}
+DATASET_NAME=${1:-boolq}
 
 echo "Running LLM ${DATASET_NAME} with Qwen + Weight LoRA"
 
@@ -27,13 +27,13 @@ python ./src/run_experiment.py \
     --max_seq_length 512 \
     --logging_steps 1 \
     --ft_strategy WeightLoRA \
-    --lora_r 16 \
+    --lora_r 8 \
     --lora_alpha 32 \
     --lora_dropout 0.05 \
     --quantization_bit 8 \
     --dtype bfloat16 \
     --use_fast_tokenizer \
-    --max_eval_samples 100 \
+    --max_eval_samples 1000 \
     --max_fat_steps 5 \
     --K 85 \
     --eval_steps 250 \

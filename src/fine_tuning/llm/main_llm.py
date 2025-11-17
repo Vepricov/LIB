@@ -10,6 +10,9 @@ from utils_llm import DatasetRegistry
 
 import warnings
 
+import torch.nn as nn
+import math
+
 DATASETS = [
     "aqua", "gsm8k", "commonsensqa", "boolq", "addsub", "multiarith",
     "singleeq", "strategyqa", "svamp", "bigbench_date", "object_tracking",
@@ -312,6 +315,13 @@ class Finetuner:
             for key, value in remain_adapters.items():
                 print(f"{key}: {value}")
             _ = utils.print_trainable_params(self.model, verbose=True)
+            for name, param in self.model.named_parameters():
+                if param.requires_grad:
+                    print(name, param.shape)
+                    if "lora_A" in name:
+                        nn.init.kaiming_uniform_(param, a=math.sqrt(5))
+                    elif "lora_B" in name:
+                        nn.init.zeros_(param)
 
         # Prepare optimizer
         optimizer = get_optimizer(self.args, self.model) # we used weight adamw in the warmup

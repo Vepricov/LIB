@@ -192,42 +192,6 @@ class CommonsenseQADatasetBuilder(DatasetBuilder):
                     self.eval_questions.append(question)
                     self.eval_answers.append(json_res["answerKey"])
 
-
-class BoolQDatasetBuilder(DatasetBuilder):
-    def get_intro_blurb(self):
-        return "answer only True or False, write answer first."
-
-    def build_dataset(self):
-        decoder = json.JSONDecoder()
-
-        # Load train data
-        with open(self.args.dataset_path) as f:
-            lines = f.readlines()
-            for line in lines:
-                json_res = decoder.raw_decode(line)[0]
-                choice = "Answer Choices: (a) True (b) False"
-                question = (
-                    json_res["question"].strip().capitalize() + "?" + " " + choice
-                )
-
-                self.train_questions.append(question)
-                self.train_answers.append(str(json_res["answer"]))
-
-        # Load eval data if available
-        if hasattr(self.args, "val_dataset_path") and self.args.val_dataset_path:
-            with open(self.args.val_dataset_path) as f:
-                lines = f.readlines()
-                for line in lines:
-                    json_res = decoder.raw_decode(line)[0]
-                    choice = "Answer Choices: (a) True (b) False"
-                    question = (
-                        json_res["question"].strip().capitalize() + "?" + " " + choice
-                    )
-
-                    self.eval_questions.append(question)
-                    self.eval_answers.append(str(json_res["answer"]))
-
-
 class ArithmeticDatasetBuilder(DatasetBuilder):
     """Handles addsub, multiarith, singleeq datasets"""
 
@@ -479,6 +443,35 @@ class ArcChallengeDatasetBuilder(DatasetBuilder):
                 )
                 self.eval_answers.append(answer)
 
+class BoolQDatasetBuilder(DatasetBuilder):
+    def get_intro_blurb(self):
+        return "answer only True or False, write answer first."
+
+    def build_dataset(self):
+        dataset = load_dataset(
+            "google/boolq", split=["train", "validation"]
+        )
+        train_data = dataset[0]
+        test_data = dataset[1]
+
+        for item in train_data:
+            question = item["question"]
+            answer = item["answer"]
+            if question is not None and answer is not None:
+                self.train_questions.append(
+                    f"{question}. [Answer options]: True or False"
+                )
+                self.train_answers.append(str(answer))
+
+        for item in test_data:
+            question = item["question"]
+            answer = item["answer"]
+            if question is not None and answer is not None:
+                self.eval_questions.append(
+                    f"{question}. [Answer options]: True or False"
+                )
+                self.eval_answers.append(str(answer))
+
 class DatasetRegistry:
     """Registry for dataset paths and builders"""
 
@@ -486,7 +479,6 @@ class DatasetRegistry:
         "aqua": "data/AQuA/train.json",
         "gsm8k": "data/grade-school-math/train.jsonl",
         "commonsensqa": "data/CommonsenseQA/train_rand_split.jsonl",
-        "boolq": "data/BoolQ/train.jsonl",
         "addsub": "data/AddSub/AddSub.json",
         "multiarith": "data/MultiArith/MultiArith.json",
         "singleeq": "data/SingleEq/questions.json",
@@ -500,7 +492,6 @@ class DatasetRegistry:
 
     VAL_DATASET_PATHS = {
         "commonsensqa": "data/CommonsenseQA/dev_rand_split.jsonl",
-        "boolq": "data/BoolQ/val.jsonl",
     }
 
     @classmethod

@@ -283,7 +283,7 @@ def set_arguments_ft(parser):
         "--save_strategy",
         "--val_strategy",
         "--evaluation_strategy",
-        default="no",
+        default=None,
         type=str,
         help="Strategy to save model checkpoints",
     )
@@ -332,7 +332,7 @@ def set_arguments_ft(parser):
     return parser
 
 def print_warnings_ft(args):
-    if args.eval_steps is not None and args.eval_strategy != "steps":
+    if args.eval_steps is not None and args.eval_strategy not in ["steps", "no"]:
         print(
             colored(
                 "~~~~~~~~~~~~~~~ WARNING: EVAL STRATEGY SET TO STEPS ~~~~~~~~~~~~~~~",
@@ -342,3 +342,14 @@ def print_warnings_ft(args):
         line = f"you pass eval_steps={args.eval_steps} (!= None as in the defaults), so we set eval_strategy=steps"
         print(colored(line, "yellow"))
         args.eval_strategy = "steps"
+
+    if args.eval_strategy is None:
+        print(
+            colored(
+                "~~~~~~~~~~~~~~~ WARNING: EVAL STRATEGY SET TO NO ~~~~~~~~~~~~~~~",
+                "yellow",
+            )
+        )
+        line = "you did not pass eval_strategy, so we set eval_strategy=no"
+        print(colored(line, "yellow"))
+        args.eval_strategy = "no"
