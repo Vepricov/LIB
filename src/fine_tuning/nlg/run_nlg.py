@@ -108,8 +108,7 @@ def main():
             weight_decay=training_args.weight_decay
         )
     ############################### Wandb Saves ################################
-    training_args.all_params, training_args.trainable_params = \
-        utils.print_trainable_parameters(model)
+    training_args.all_params, training_args.trainable_params = utils.print_trainable_parameters(model)
     training_args.num_peft_adapters = num_peft_adapters
     training_args.peft_params = training_args.all_params - all_params_before_peft
     training_args.train_proportion = training_args.trainable_params / training_args.all_params * 100 
@@ -128,7 +127,7 @@ def main():
     else:
         training_args.optimizer = training_args.optim
     training_args.benchmark_name = data_args.dataset_name
-    training_args.tsk_name = data_args.task_name
+    training_args.task_name = data_args.task_name
     ############################# Training #####################################
     print("$"*30, f" {run_name} ", "$"*30)
     trainer = Seq2SeqTrainer(

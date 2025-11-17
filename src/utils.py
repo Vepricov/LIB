@@ -211,7 +211,18 @@ def get_peft_arguments(args):
             "fc1",
             "fc2",
         ]
-    elif "Llama" in args.model.lower():
+    elif "llama" in args.model.lower():
+        peft_args.target_modules = [
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+            "lm_head",
+        ]
+    elif "qwen" in args.model.lower():
         peft_args.target_modules = [
             "q_proj",
             "k_proj",
