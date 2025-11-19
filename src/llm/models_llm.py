@@ -221,6 +221,45 @@ class LlamaFramework(ModelFramework):
             "lm_head",
         ]
 
+class QwenFramework(ModelFramework):
+
+    def get_bnb_config(self):
+        if self.args.task_type == "CAUSAL_LM":
+            torch_dtype = self.dtype
+        else:
+            torch_dtype = (
+                torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else
+                torch.float16
+            )
+
+        if self.args.quant_bit == 8:
+            bnb_config = BitsAndBytesConfig(
+                load_in_8bit=True,
+                bnb_8bit_compute_dtype=torch_dtype,
+            )
+        elif self.args.quant_bit == 4:
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",      #~ not sure if we need this, but let it be
+                bnb_4bit_use_double_quant=True, #~ probably a good choice
+                bnb_4bit_compute_dtype=torch_dtype,
+            )
+        else:
+            bnb_config = None
+
+        return bnb_config
+
+    def get_target_modules(self):
+        return [
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+            "lm_head",
+        ]
 
 class T5Framework(ModelFramework):
 
@@ -269,6 +308,8 @@ def create_model_framework(args):
 
     if "llama" in model_name:
         return LlamaFramework(args)
+    elif "qwen" in model_name:
+        return QwenFramework(args)
     elif "deberta" in model_name:
         return DebertaFramework(args)
     elif "t5" in model_name:
