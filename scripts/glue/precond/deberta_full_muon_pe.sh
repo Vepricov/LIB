@@ -1,7 +1,7 @@
 clear
 
-# datasets=(cola mnli mrpc qnli qqp rte sst2 stsb)
-datasets=(cola rte)
+datasets=(cola mnli mrpc qnli qqp rte sst2 stsb)
+# datasets=(cola rte)
 lrs=(3e-4 1e-3 2e-5)
 
 for dataset in "${datasets[@]}"; do
@@ -10,7 +10,7 @@ for dataset in "${datasets[@]}"; do
       --dataset $dataset \
       --model distilbert/distilbert-base-uncased \
       --optimizer muon \
-      --batch_size 16 \
+      --batch_size 32 \
       --gradient_accumulation_steps 2 \
       --lr $lr \
       --lr_scheduler_type linear \
@@ -18,11 +18,8 @@ for dataset in "${datasets[@]}"; do
       --max_train_steps 10000 \
       --eval_strategy epoch \
       --save_strategy no \
-      --ft_strategy LoRA \
-      --dtype bfloat16 \
-      --lora_r 4 \
-      --lora_alpha 32 \
-      --lora_dropout 0.05 \
+      --ft_strategy Full \
+      --orth_algo ns \
       --wandb
   done
   done

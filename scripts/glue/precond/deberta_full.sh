@@ -20,6 +20,5 @@ do
         --eval_strategy epoch \
         --save_strategy no \
         --ft_strategy Full \
-        --dtype bfloat16 \
         --wandb
 done

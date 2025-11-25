@@ -101,7 +101,7 @@ def parse_args():
         )
         parser.add_argument("--eps", default=1e-8, type=float, help="Epsilon for Adam")
 
-    if args1.optimizer in ["shampoo", "sgd", "muon", "taia"]:
+    if args1.optimizer in ["shampoo", "sgd", "muon", "adamuon", "rmsspectral", "rmsspectral_sania"]:
         parser.add_argument(
             "--momentum", default=0.9, type=float, help="First momentum"
         )
@@ -119,32 +119,30 @@ def parse_args():
             type=int,
             help="maximum dimension of preconditioner for SOAP-like algorithms",
         )
-    if args1.optimizer in ["shampoo", "soap", "diag-hvp", "taia"]:
+    if args1.optimizer in ["shampoo", "soap", "diag-hvp"]:
         parser.add_argument(
             "--update_freq",
             default=1,
             type=int,
             help="Freqiensy to update Q for Shampoo and SOAP",
         )
-    if args1.optimizer in ["muon", "taia"]:
+    if args1.optimizer in ["muon", "adamuon", "rmsspectral", "rmsspectral_sania"]:
         parser.add_argument(
             "--ns_steps", default=10, type=int, help="Number of the NS steps algo"
         )
         parser.add_argument(
             "--adamw_lr", default=1e-4, type=float, help="lr for adam in "
         )
-    if args1.optimizer == "taia":
+        if args1.optimizer == "muon":
+            parser.add_argument(
+                "--orth_algo",
+                default="ns",
+                type=str,
+                help="Orthogonalization algorithm: 'ns' (Newton–Schulz) or 'polar' (PolarExpress)",
+            )
+    if args1.optimizer in ["rmsspectral", "rmsspectral_sania"]:
         parser.add_argument(
-            "--lmo",
-            default="frobenious",
-            type=str,
-            help="Linear minimization oracle for taia",
-        )
-        parser.add_argument(
-            "--precondition_type",
-            default="norm",
-            type=str,
-            help="Type of preconditioner for taia",
+            "--rms_power", default=0.25, type=float, help="RMS spectral power (0.25 default, 0.5 for SANIA variant)"
         )
 
     ### Problem Specific Arguments

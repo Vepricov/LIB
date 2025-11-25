@@ -9,7 +9,7 @@ for dataset in "${datasets[@]}"; do
     CUDA_VISIBLE_DEVICES=0 python ./src/run_experiment.py \
       --dataset $dataset \
       --model distilbert/distilbert-base-uncased \
-      --optimizer adamw \
+      --optimizer adam_sania \
       --batch_size 16 \
       --gradient_accumulation_steps 2 \
       --lr $lr \
@@ -19,7 +19,6 @@ for dataset in "${datasets[@]}"; do
       --eval_strategy epoch \
       --save_strategy no \
       --ft_strategy LoRA \
-      --dtype bfloat16 \
       --lora_r 4 \
       --lora_alpha 32 \
       --lora_dropout 0.05 \
