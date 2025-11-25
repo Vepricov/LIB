@@ -1,19 +1,19 @@
 clear
 
-# datasets=(cola mnli mrpc qnli qqp rte sst2 stsb)
-datasets=(cola rte)
-lrs=(3e-4 1e-3 2e-5)
+datasets=(cola mnli mrpc qnli qqp rte sst2 stsb)
+# datasets=(cola rte)
+lrs=(3e-4 1e-3 2e-5 1e-4)
 
 for dataset in "${datasets[@]}"; do
     for lr in "${lrs[@]}"; do
-        CUDA_VISIBLE_DEVICES=1 python ./src/run_experiment.py \
+        CUDA_VISIBLE_DEVICES=0 python ./src/run_experiment.py \
             --dataset $dataset \
             --model distilbert/distilbert-base-uncased \
             --optimizer taia \
             --lmo spectral \
             --precondition_type adam \
             --init eps \
-            --batch_size 16 \
+            --batch_size 32 \
             --gradient_accumulation_steps 2 \
             --lr $lr \
             --lr_scheduler_type linear \
@@ -22,10 +22,10 @@ for dataset in "${datasets[@]}"; do
             --eval_strategy epoch \
             --save_strategy no \
             --ft_strategy LoRA \
-            --dtype bfloat16 \
             --lora_r 4 \
             --lora_alpha 32 \
-            --lora_dropout 0.05 \
+            --lora_dropout 0.1 \
+            --orth_algo polar \
             --wandb
     done
 done

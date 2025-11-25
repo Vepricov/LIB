@@ -4,8 +4,8 @@ import sys
 # from torch_optimizer import Shampoo
 sys.path.append("src/optimizers")
 import soap, muon
-import taia
 import lora_rite
+import adamuon, rmsspectral, adam_sania
 
 
 def get_optimizer(args, model):
@@ -45,19 +45,48 @@ def get_optimizer(args, model):
             adamw_wd=args.weight_decay,
             momentum=args.momentum,
             ns_steps=args.ns_steps,
+            orth_algo=args.orth_algo,
         )
-    elif args.optimizer == "taia":
-        optimizer = taia.TAIA(
-            taia_params=trainable_params,
+    elif args.optimizer == "adamuon":
+        optimizer = adamuon.AdaMuon(
+            params=trainable_params,
             lr=args.lr,
             momentum=args.momentum,
             ns_steps=args.ns_steps,
+            weight_decay=args.weight_decay,
             adamw_lr=args.adamw_lr,
             adamw_betas=(args.beta1, args.beta2),
             adamw_eps=args.eps,
             adamw_wd=args.weight_decay,
-            lmo=args.lmo,
-            precondition_type=args.precondition_type,
+            eps=args.eps,
+        )
+    elif args.optimizer == "rmsspectral":
+        optimizer = rmsspectral.RMSSpectral(
+            params=trainable_params,
+            lr=args.lr,
+            momentum=args.momentum,
+            ns_steps=args.ns_steps,
+            weight_decay=args.weight_decay,
+            adamw_lr=args.adamw_lr,
+            adamw_betas=(args.beta1, args.beta2),
+            adamw_eps=args.eps,
+            adamw_wd=args.weight_decay,
+            eps=args.eps,
+            rms_power=getattr(args, "rms_power", 0.25),
+        )
+    elif args.optimizer == "rmsspectral_sania":
+        optimizer = rmsspectral.RMSSpectral(
+            params=trainable_params,
+            lr=args.lr,
+            momentum=args.momentum,
+            ns_steps=args.ns_steps,
+            weight_decay=args.weight_decay,
+            adamw_lr=args.adamw_lr,
+            adamw_betas=(args.beta1, args.beta2),
+            adamw_eps=args.eps,
+            adamw_wd=args.weight_decay,
+            eps=args.eps,
+            rms_power=0.5,
         )
     elif args.optimizer == "lora_rite":
         optimizer = lora_rite.LoRARite(
@@ -65,6 +94,14 @@ def get_optimizer(args, model):
             betas=(args.beta1, args.beta2),
             eps=args.eps,
             lr=args.lr,
+            weight_decay=args.weight_decay,
+        )
+    elif args.optimizer == "adam_sania":
+        optimizer = adam_sania.AdamSania(
+            params=trainable_params,
+            lr=args.lr,
+            betas=(args.beta1, args.beta2),
+            eps=args.eps,
             weight_decay=args.weight_decay,
         )
     else:

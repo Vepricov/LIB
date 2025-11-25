@@ -92,7 +92,7 @@ def get_run_name(args, parser, tuning=False):
         "weight_init",
         "ns_steps",
     ]
-    if args.optimizer in ["taia", "adam-sania"]:
+    if args.optimizer in ["adam-sania"]:
         ignore_args_tuning.append("scale")
     # Get the default values
     defaults = vars(parser.parse_args([]))
