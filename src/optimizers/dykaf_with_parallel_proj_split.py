@@ -99,30 +99,33 @@ def proj_split(L, R, g, beta=0, init="kron", max_precond_dim=10000, eps=1e-3):
     R = R / right_factor_norm if len(R) != 0 else R
 
     K1, L1 = torch.tensor([1.0], device=g.device), torch.tensor([1.0], device=g.device)
+    grg = None
     if len(L) != 0 and len(R) != 0:
-        K1 = L * norm_product + g @ R @ g.T
-        L1 = R * norm_product + g.T @ L @ g
-    elif len(L) != 0:
-        K1 = L * norm_product + g @ g.T
-    elif len(R) != 0:
-        L1 = R * norm_product + g.T @ g
+        grg = g @ R @ g.T
+    else:
+        grg = g @ g.T
+
+    K1 = L * norm_product + grg
 
     K_norm = torch.norm(K1)
-    L_norm = torch.norm(L1)
 
     U1 = K1 / K_norm
-    V1 = L1 / L_norm
+    S1 = K_norm - torch.sum(U1 * grg)
 
-    M = torch.sum(L * U1)
-    N = torch.sum(R * V1)
-
-    S1 = M * N * norm_product + torch.sum(U1 * (g @ V1 @ g.T))
     if len(L) != 0 and len(R) != 0:
-        return U1 * (S1**0.5), V1 * (S1**0.5)
-    elif len(L) != 0:
-        return U1 * (S1), []
+        grg = g.T @ L @ g
     else:
-        return [], V1 * (S1)
+        grg = g.T @ g
+
+    L1 = R * S1 + grg
+    S2 = torch.norm(L1)
+    V1 = L1 / S2
+    if len(L) != 0 and len(R) != 0:
+        return U1 * (S2**0.5), V1 * (S2**0.5)
+    elif len(L) != 0:
+        return U1 * (S2), []
+    else:
+        return [], V1 * (S2)
 
 
 class DyKAF(torch.optim.Optimizer):
