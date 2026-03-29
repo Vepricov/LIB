@@ -34,9 +34,6 @@ def get_optimizer(args, model):
             eps=args.eps,
             weight_decay=args.weight_decay,
             precondition_frequency=args.update_freq,
-            max_precond_dim=10000,  # Standard value
-            precondition_1d=True,  # Treat all as 1D to reduce memory
-            merge_dims=False,  # Merge dimensions to reduce memory
         )
     elif args.optimizer == "sgd":
         optimizer = optim.SGD(

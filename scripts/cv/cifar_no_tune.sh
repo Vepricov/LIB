@@ -5,9 +5,7 @@ python ./src/run_experiment.py \
     --dataset cifar10 \
     --eval_runs 1 \
     --n_epochs_train 20 \
+    --lr 0.0001 \
     --optimizer tensor_dykaf \
     --verbose \
-    --use_old_tune_params \
-    --wandb \
-
-# --use_old_tune_params --tune --momentum 0.95 --weight_decay 1e-5 -
+    --wandb

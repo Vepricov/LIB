@@ -41,17 +41,12 @@ def cifar_prepocess(args):
                                            transform=transform_test)
     # ds_test = utils.TransformdDataset(ds_test, transform=transform_test)
     
-    # ОПТИМИЗАЦИЯ: Добавляем num_workers для параллельной загрузки данных
-    # и pin_memory для быстрой передачи на GPU
     train_dataloader = DataLoader(
         ds_train, 
         batch_size=args.batch_size,
         worker_init_fn=seed_worker,
         generator=g,
         shuffle=True,
-        num_workers=4,        # Параллельная загрузка данных
-        pin_memory=True,      # Ускорение передачи CPU->GPU
-        persistent_workers=True,  # Переиспользование воркеров
     )
     val_dataloader = DataLoader(
         ds_val, 
@@ -59,9 +54,6 @@ def cifar_prepocess(args):
         worker_init_fn=seed_worker,
         generator=g,
         shuffle=False,
-        num_workers=4,
-        pin_memory=True,
-        persistent_workers=True,
     )
     test_dataloader = DataLoader(
         ds_test, 
@@ -69,9 +61,6 @@ def cifar_prepocess(args):
         worker_init_fn=seed_worker,
         generator=g,
         shuffle=False,
-        num_workers=4,
-        pin_memory=True,
-        persistent_workers=True,
     )
     loss_fn = nn.CrossEntropyLoss(reduction="mean")
 

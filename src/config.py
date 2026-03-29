@@ -41,6 +41,7 @@ def parse_args():
             "sgd",
             "adam-sania",
             "muon",
+            "tensor_dykaf"
         ],
     )
     args1, _ = parser1.parse_known_args()
@@ -78,7 +79,7 @@ def parse_args():
     parser.add_argument(
         "--run_prefix", default=None, help="Run prefix for the experiment run name"
     )
-    parser.add_argument("--wandb_project", default="OPTIM_TEST")
+    parser.add_argument("--wandb_project", default="DyKAF CIFAR 10")
     parser.add_argument(
         "--verbose",
         action="store_true",
@@ -113,14 +114,14 @@ def parse_args():
             "--momentum", default=0.9, type=float, help="First momentum"
         )
 
-    if args1.optimizer in ["soap"]:
+    if args1.optimizer in ["soap", "tensor_dykaf"]:
         parser.add_argument(
             "--shampoo_beta",
             default=-1,
             type=float,
             help="momentum for SOAP. if -1, the equals to beta2",
         )
-    if args1.optimizer in ["shampoo", "soap", "diag-hvp"]:
+    if args1.optimizer in ["shampoo", "soap", "diag-hvp", "tensor_dykaf"]:
         parser.add_argument(
             "--update_freq",
             default=1,

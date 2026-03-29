@@ -28,9 +28,6 @@ def train_step(
 ):
     model.train()
     total_loss = 0
-    # Аккумулятор для батчевого логирования в wandb
-    wandb_buffer = []
-    
     for t, (X, y) in enumerate(dataloader):
         X = X.to(device)
         if args.dataset in ["mushrooms", "binary"]:
@@ -54,46 +51,29 @@ def train_step(
         # Теперь loss точно скаляр, можно вызывать backward()
         loss.backward()
 
-        # ОПТИМИЗАЦИЯ: Вычисляем gradient norm только раз в 50 батчей или для verbose
-        total_norm = None
-        compute_norm = False
-        
-        if args.wandb and not tuning and t % 50 == 0:
-            compute_norm = True
-        elif verbose and not tuning and round((t + 1) / len(dataloader), 1) - round(t / len(dataloader), 1) > 0:
-            compute_norm = True
-            
-        if compute_norm:
-            total_norm = 0.0
-            for p in model.parameters():
-                if p.grad is not None:
-                    param_norm = p.grad.detach().data.norm(2)
-                    total_norm += param_norm.item() ** 2
-            total_norm = total_norm**0.5
+        total_norm = 0.0
+        for p in model.parameters():
+            if p.grad is not None:
+                param_norm = p.grad.detach().data.norm(2)
+                total_norm += param_norm.item() ** 2
+        total_norm = total_norm**0.5
 
         optimizer.step()
 
-        # ОПТИМИЗАЦИЯ: Батчевое логирование в wandb (каждые 10 батчей вместо каждого батча)
         if args.wandb and not tuning:
-            wandb_buffer.append({
-                "train_loss": loss.item(),
-                "train_step": train_config["train_step"],
-                "gradient_norm": total_norm if total_norm is not None else None,
-            })
-            
-            # Логируем батчами каждые 10 итераций или в конце эпохи
-            if len(wandb_buffer) >= 10 or t == len(dataloader) - 1:
-                # Берем последнее значение из буфера для логирования
-                wandb.log(wandb_buffer[-1])
-                wandb_buffer = []
-        
+            wandb.log(
+                {
+                    "train_loss": loss.item(),
+                    "train_step": train_config["train_step"],
+                    "gradient_norm": total_norm,
+                }
+            )
         if (
             verbose
             and not tuning
             and round((t + 1) / len(dataloader), 1) - round(t / len(dataloader), 1) > 0
         ):
-            norm_str = f"{total_norm:.4f}" if total_norm is not None else "N/A"
-            line = f"[TRAIN {epoch+t/len(dataloader):.1f}/{args.n_epochs_train}] train_loss {loss.item():.4f} grad_norm {norm_str}"
+            line = f"[TRAIN {epoch+t/len(dataloader):.1f}/{args.n_epoches_train}] train_loss {loss.item():.4f} grad_norm {total_norm:.4f}"
             print(f"{line}")
         train_config["train_step"] += 1
         total_loss += loss.item()
@@ -158,7 +138,7 @@ def train(
 ):
     train_config = {}
     train_config["train_step"] = 0
-    n_epoches = args.n_epoches_tune if tuning else args.n_epochs_train
+    n_epoches = args.n_epoches_tune if tuning else args.n_epoches_train
     e_list = range(n_epoches) if tuning or args.verbose else tqdm(range(n_epoches))
     val_metrics = defaultdict(list)
     test_metrics = defaultdict(list)
@@ -234,11 +214,11 @@ def train(
             wandb.log(wandb_config)
 
         if verbose and not tuning:
-            line = f">>>[VAL  {e+1}/{args.n_epochs_train}] "
+            line = f">>>[VAL  {e+1}/{args.n_epoches_train}] "
             for key in val_results.keys():
                 line += f"{key.split('_')[1]} {val_results[key]:.4f} "
             print(f"{line}")
-            line = f">>>[TEST {e+1}/{args.n_epochs_train}] "
+            line = f">>>[TEST {e+1}/{args.n_epoches_train}] "
             for key in test_results.keys():
                 line += f"{key.split('_')[1]} {test_results[key]:.4f} "
             print(f"{line}")

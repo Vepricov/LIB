@@ -13,7 +13,7 @@ def set_arguments_cv(parser):
     )
 
     ### Training Arguments (change defaults)
-    parser.set_defaults(batch_size=64, n_epoches_train=10, eval_runs=5)
+    parser.set_defaults(batch_size=64, n_epochs_train=10, eval_runs=5)
 
     ### Tuning Arguments
     parser.add_argument("--tune", action="store_true", help="Tune params")

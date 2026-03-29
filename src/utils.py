@@ -84,7 +84,7 @@ def get_run_name(args, parser, tuning=False):
         "run_name",
     ]
     ignore_args_tuning = [
-        "n_epoches",
+        "n_epochs_train",
         "lr",
         "weight_decay",
         "rotate",
