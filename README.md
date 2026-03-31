@@ -1,5 +1,11 @@
 # DyKAF: Dynamical Kronecker Approximation of the Fisher Information Matrix for Gradient Preconditioning
 
+## New CIFAR 10 time experiments
+
+![New CIFAR 10 time experiments](figures/cifar_test_f1_vs_relative_time.png)
+
+
+
 Main optimizer: `./src/optimizers/dykaf.py`
 
 Syntetic experiments: `./src/libsvm/`
