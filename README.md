@@ -1,9 +1,12 @@
 # DyKAF: Dynamical Kronecker Approximation of the Fisher Information Matrix for Gradient Preconditioning
 
-## Updated Figure 2
+The figure compares norms of second moments and updates of DyKAF and SOAP.
 
-![Updated Figure 2](figures/cifar.jpg)
+![Updated Figure](figures/norms.jpg)
 
+## Updated Figure 1 and 2
+
+![Updated Figure 1](figures/relative_errors.jpg)
 ## New CIFAR 10 time experiments
 
 ![New CIFAR 10 time experiments](figures/cifar_test_f1_vs_relative_time.png)
